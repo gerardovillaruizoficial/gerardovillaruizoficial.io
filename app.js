@@ -12,7 +12,14 @@
       const modelDisplayName = isFlux2 ? 'Flux.2' : 'Flux';
       identityPrefix = `Eres ${modelDisplayName}, un modelo avanzado de generación visual desarrollado por Black Forest Labs (flux-2-flash) e integrado a través de Poe API. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${modelDisplayName} vía Poe API (ejemplo: "Soy ${modelDisplayName} en Poe API."). Responde siempre de forma educada, servicial y natural en español.`;
     } else if (lower.includes('gpt 6 astra')) {
-      identityPrefix = `Eres ${model}, un modelo insignia de lenguaje e inteligencia artificial desarrollado por OpenAI. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${model} de OpenAI (ejemplo: "Soy ${model} de OpenAI."). NUNCA menciones a Mistral, Mistral Large, NVIDIA, Anthropic, Claude, Qwen ni Meta. Responde siempre de forma educada, servicial y natural en español.`;
+      const astraStyles = {
+        bajo: ' Responde directo y conciso.',
+        medio: ' Responde claro y completo.',
+        alto: ' Responde bien estructurado y técnico.',
+        extra: ' Responde detallado y preciso.',
+        max: ' Responde con rigor técnico y claridad directa.'
+      };
+      return `Eres ${model} de OpenAI. Si preguntan tu identidad di "Soy ${model} de OpenAI." Jamás menciones Mistral, Nemotron, NVIDIA, Anthropic ni Claude. Responde en español. No redactes borradores largos en tu pensamiento interno; piensa en menos de 8 palabras y entrega la respuesta directamente.` + (astraStyles[effortKey] || astraStyles.bajo);
     } else {
       identityPrefix = `Eres ${model}, un modelo de inteligencia artificial desarrollado por Anthropic. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${model} de Anthropic (ejemplo: "Soy ${model} de Anthropic."). NUNCA menciones a Qwen, OpenAI, Meta, Alibaba ni ningún modelo o creador técnico externo. Responde siempre de forma educada, servicial y natural en español.`;
     }
@@ -140,6 +147,8 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     isStreaming: false,
     abortController: false,
     selectedAttachment: null,
+    authUser: null,
+    authMode: 'login',
     settings: {
       theme: 'dark',
       userName: '',
@@ -167,11 +176,12 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
   const DEFAULT_NVIDIA_PROXY_URL = 'https://mute-dream-72d8.villaruizgerardo0.workers.dev';
   const STORAGE_KEY_PENDING_STRIPE = 'megacld_pending_stripe_session';
   let stripePollTimer = null;
+  let cachedWorkingNvidiaEndpoint = '';
 
   const SPEED_DELAYS = {
-    fast: 14,
-    normal: 26,
-    slow: 48
+    fast: 8,
+    normal: 14,
+    slow: 28
   };
 
   const dom = {};
@@ -187,6 +197,8 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.searchInput = document.getElementById('searchInput');
     dom.chatsList = document.getElementById('chatsList');
     dom.topbarTitle = document.getElementById('topbarTitle');
+    dom.topbarAuthBtn = document.getElementById('topbarAuthBtn');
+    dom.topbarAuthBtnText = document.getElementById('topbarAuthBtnText');
     dom.themeToggleBtn = document.getElementById('themeToggleBtn');
     dom.chatModelSelectorBtn = document.getElementById('chatModelSelectorBtn');
     dom.composerModelName = document.getElementById('composerModelName');
@@ -230,6 +242,31 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.profileUserName = document.getElementById('profileUserName');
     dom.nameModal = document.getElementById('nameModal');
     dom.closeNameModalBtn = document.getElementById('closeNameModalBtn');
+    dom.authModalTitle = document.getElementById('authModalTitle');
+    dom.authLoggedOutView = document.getElementById('authLoggedOutView');
+    dom.authLoggedInView = document.getElementById('authLoggedInView');
+    dom.authTabLoginBtn = document.getElementById('authTabLoginBtn');
+    dom.authTabRegisterBtn = document.getElementById('authTabRegisterBtn');
+    dom.googleSignInBtn = document.getElementById('googleSignInBtn');
+    dom.firebaseEmailAuthForm = document.getElementById('firebaseEmailAuthForm');
+    dom.authNameFieldWrap = document.getElementById('authNameFieldWrap');
+    dom.authRegisterNameInput = document.getElementById('authRegisterNameInput');
+    dom.authEmailInput = document.getElementById('authEmailInput');
+    dom.authPasswordFieldWrap = document.getElementById('authPasswordFieldWrap');
+    dom.authPasswordInput = document.getElementById('authPasswordInput');
+    dom.toggleAuthPasswordBtn = document.getElementById('toggleAuthPasswordBtn');
+    dom.authEyeShow = document.getElementById('authEyeShow');
+    dom.authEyeHide = document.getElementById('authEyeHide');
+    dom.authForgotPasswordBtn = document.getElementById('authForgotPasswordBtn');
+    dom.authBackToLoginBtn = document.getElementById('authBackToLoginBtn');
+    dom.authFeedbackNotice = document.getElementById('authFeedbackNotice');
+    dom.authSubmitBtn = document.getElementById('authSubmitBtn');
+    dom.authModalAvatar = document.getElementById('authModalAvatar');
+    dom.authAccountNameDisplay = document.getElementById('authAccountNameDisplay');
+    dom.authAccountEmailDisplay = document.getElementById('authAccountEmailDisplay');
+    dom.authProviderBadge = document.getElementById('authProviderBadge');
+    dom.authProfileFeedbackNotice = document.getElementById('authProfileFeedbackNotice');
+    dom.logoutFirebaseBtn = document.getElementById('logoutFirebaseBtn');
     dom.customAccountNameInput = document.getElementById('customAccountNameInput');
     dom.saveAccountNameBtn = document.getElementById('saveAccountNameBtn');
     dom.settingsModal = document.getElementById('settingsModal');
@@ -362,13 +399,40 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     }
   }
 
+  function renderAvatarNode(targetEl, photoUrl, fallbackLetter) {
+    if (!targetEl) return;
+    const letter = (fallbackLetter || 'U').toUpperCase();
+    if (photoUrl) {
+      targetEl.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = photoUrl;
+      img.alt = letter;
+      img.referrerPolicy = 'no-referrer';
+      img.onerror = function () {
+        targetEl.textContent = letter;
+      };
+      targetEl.appendChild(img);
+    } else {
+      targetEl.textContent = letter;
+    }
+  }
+
   function updateEmptyStateGreeting() {
-    const name = (state.settings.userName || 'Usuario').trim();
+    const authName = state.authUser
+      ? (state.authUser.displayName || (state.authUser.email ? state.authUser.email.split('@')[0] : '')).trim()
+      : '';
+    const name = (state.settings.userName || authName || 'Usuario').trim();
     const timeWord = getTimeGreeting();
-    dom.claudeEmptyGreeting.textContent = `${timeWord}, ${name}`;
-    dom.claudeEmptySubtitle.textContent = '¿En qué puedo ayudarte hoy?';
-    dom.profileUserName.textContent = name;
-    dom.userAvatarCircle.textContent = (name[0] || 'U').toUpperCase();
+    if (dom.claudeEmptyGreeting) dom.claudeEmptyGreeting.textContent = `${timeWord}, ${name}`;
+    if (dom.claudeEmptySubtitle) dom.claudeEmptySubtitle.textContent = '¿En qué puedo ayudarte hoy?';
+    if (dom.profileUserName) dom.profileUserName.textContent = name;
+    const initial = (name[0] || 'U').toUpperCase();
+    const photoUrl = state.authUser && state.authUser.photoURL ? state.authUser.photoURL : '';
+    renderAvatarNode(dom.userAvatarCircle, photoUrl, initial);
+    renderAvatarNode(dom.authModalAvatar, photoUrl, initial);
+    if (dom.topbarAuthBtnText) {
+      dom.topbarAuthBtnText.textContent = state.authUser ? name : 'Iniciar sesión';
+    }
   }
 
   function cleanIdentityLeakage(text, currentModel) {
@@ -390,7 +454,9 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     if (lower.includes('gpt 6 astra')) {
       return text
         .replace(/mistralai\/mistral-large-4-1t-a52b/gi, 'GPT 6 Astra')
+        .replace(/nvidia\/nemotron[^\s,.)]*/gi, 'GPT 6 Astra')
         .replace(/\bMistral\s+Large(?:\s+\d+)?/gi, 'GPT 6 Astra')
+        .replace(/\bNemotron(?:\s+[\w.-]+)?/gi, 'GPT 6 Astra')
         .replace(/(?:creado|desarrollado|entrenado|impulsado)\s+por\s+(?:Mistral(?:\s+AI)?|NVIDIA|Anthropic|Qwen|Meta|Alibaba)/gi, 'desarrollado por OpenAI')
         .replace(/(?:un modelo de lenguaje|un asistente|una IA|un modelo)\s+(?:de\s+inteligencia\s+artificial\s+)?(?:creado|desarrollado|entrenado)\s+por\s+(?:Mistral(?:\s+AI)?|NVIDIA|Anthropic|Qwen|Meta|Alibaba)/gi, 'GPT 6 Astra de OpenAI')
         .replace(/\bMistral(?:\s+AI)?\b/gi, 'OpenAI');
@@ -2523,6 +2589,13 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
           const isNvidiaEnabled = data && (data.nvidiaConfigured === true || (candidate.kind !== 'worker-root' && data.envConfigured === true));
           const isNvidiaServerOnly = data && (data.nvidiaServerActive === true || (candidate.kind !== 'worker-root' && data.serverActive === true));
           if (isNvidiaEnabled) {
+            if (candidate.kind === 'local') {
+              cachedWorkingNvidiaEndpoint = '/api/nvidia/chat';
+            } else if (candidate.kind === 'netlify') {
+              cachedWorkingNvidiaEndpoint = '/.netlify/functions/nvidia-chat';
+            } else {
+              cachedWorkingNvidiaEndpoint = resolveNvidiaEndpoint(candidate.url, 'chat');
+            }
             dom.nvidiaStatusNotice.className = 'api-key-status-notice success';
             dom.nvidiaStatusNotice.textContent = 'GPT 6 Astra activo por defecto vía NVIDIA API (clave protegida fuera del navegador).';
             return;
@@ -2759,11 +2832,16 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 
   function buildConversationMessages(messages, selectedModel, webResults = [], webMeta = null) {
     const effortKey = state.settings.effortLevel || 'bajo';
+    const isAstra = (selectedModel || '').toLowerCase().includes('gpt 6 astra');
     let effortPrompt = getSystemPrompt(selectedModel, effortKey);
     const hasWebResults = Array.isArray(webResults) && webResults.length > 0;
     const todayIso = new Date().toISOString().slice(0, 10);
 
-    effortPrompt += '\n\nMEMORIA DE CONVERSACIÓN: Tienes memoria completa de todos los mensajes previos de este chat (texto, código, imágenes generadas o videos). Si el usuario hace referencia a imágenes, videos o temas anteriores, responde con coherencia usando ese historial.';
+    if (!isAstra) {
+      effortPrompt += '\n\nMEMORIA DE CONVERSACIÓN: Tienes memoria completa de todos los mensajes previos de este chat (texto, código, imágenes generadas o videos). Si el usuario hace referencia a imágenes, videos o temas anteriores, responde con coherencia usando ese historial.';
+    } else if (Array.isArray(messages) && messages.length > 1) {
+      effortPrompt += ' Usa el historial previo del chat si aplica.';
+    }
 
     if (hasWebResults) {
       const formattedWebContext = webResults
@@ -2774,7 +2852,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       effortPrompt += `\n\nBÚSQUEDA EN INTERNET ACTIVA (${todayIso}): Se ejecutó una búsqueda web automática para "${webMeta.query || ''}", pero los motores consultados no devolvieron fragmentos exactos para esos términos. Responde con tu mejor conocimiento aclarando qué términos se consultaron, sin afirmar que careces de herramienta de búsqueda.`;
     }
 
-    const recentMessages = Array.isArray(messages) ? messages.slice(-24) : [];
+    const recentMessages = Array.isArray(messages) ? messages.slice(isAstra ? -10 : -24) : [];
     const mappedMessages = recentMessages.map((m, idx) => {
       let msgContent = sanitizeMessageForTextMemory(m);
       if (hasWebResults && idx === recentMessages.length - 1 && m.role === 'user') {
@@ -2796,6 +2874,19 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       },
       ...mappedMessages
     ];
+  }
+
+  function extractAnswerFromReasoning(reasoningText) {
+    if (!reasoningText || typeof reasoningText !== 'string') return '';
+    const cleaned = cleanIdentityLeakage(reasoningText.trim(), 'GPT 6 Astra');
+    const paragraphs = cleaned
+      .split(/\n{2,}/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0 && !/^(the user|user asks|we need|let's|i should|thinking|step \d|first,|in spanish)/i.test(p));
+    if (paragraphs.length > 0) {
+      return paragraphs.slice(-3).join('\n\n');
+    }
+    return cleaned;
   }
 
   function processSseLine(line, onReasoningChunk, onContentChunk) {
@@ -2951,11 +3042,24 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       (window.location.protocol === 'http:' || window.location.protocol === 'https:');
 
     const formattedMessages = buildConversationMessages(messages, selectedModel, webResults, webMeta);
+    const effortKey = state.settings.effortLevel || 'bajo';
+    const maxTokensByEffort = {
+      bajo: 650,
+      medio: 900,
+      alto: 1150,
+      extra: 1350,
+      max: 1500
+    };
     const requestPayload = {
+      model: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
       messages: formattedMessages,
-      temperature: 0.6,
-      top_p: 0.95,
-      max_tokens: 4096,
+      temperature: 0.45,
+      top_p: 0.9,
+      max_tokens: maxTokensByEffort[effortKey] || 1000,
+      chat_template_kwargs: {
+        enable_thinking: false,
+        thinking: false
+      },
       stream: true
     };
     if (customKey) {
@@ -2963,17 +3067,25 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
 
     const proxyCandidates = [];
+    const pushUniqueCandidate = function (url) {
+      if (url && !proxyCandidates.includes(url)) {
+        proxyCandidates.push(url);
+      }
+    };
     const customChatEndpoint = resolveNvidiaEndpoint(customNvidiaProxy, 'chat');
     if (customChatEndpoint) {
-      proxyCandidates.push(customChatEndpoint);
+      pushUniqueCandidate(customChatEndpoint);
     } else {
+      if (cachedWorkingNvidiaEndpoint) {
+        pushUniqueCandidate(cachedWorkingNvidiaEndpoint);
+      }
       if (isHttpOrigin && !isGhPages) {
-        proxyCandidates.push('/api/nvidia/chat');
-        proxyCandidates.push('/.netlify/functions/nvidia-chat');
+        pushUniqueCandidate('/api/nvidia/chat');
+        pushUniqueCandidate('/.netlify/functions/nvidia-chat');
       }
       const defaultChatEndpoint = resolveNvidiaEndpoint(activeNvidiaProxy, 'chat');
       if (defaultChatEndpoint) {
-        proxyCandidates.push(defaultChatEndpoint);
+        pushUniqueCandidate(defaultChatEndpoint);
       }
     }
 
@@ -2985,6 +3097,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 
     let sawOldPoeWorker = false;
     let customProxyNetworkError = '';
+    let lastNvidiaUpstreamError = null;
 
     for (let i = 0; i < proxyCandidates.length; i++) {
       const endpoint = proxyCandidates[i];
@@ -3027,8 +3140,11 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
         if ((resp.status === 404 || resp.status === 405) && !(typeof errMsg === 'string' && errMsg.startsWith('NVIDIA API Error'))) {
           continue;
         }
-        throw new Error(errMsg || ('Error en NVIDIA API (' + resp.status + ')'));
+        lastNvidiaUpstreamError = new Error(errMsg || ('Error en NVIDIA API (' + resp.status + ')'));
+        continue;
       }
+
+      cachedWorkingNvidiaEndpoint = endpoint;
 
       if (contentType.includes('text/event-stream')) {
         await readOpenAISseStream(resp, onReasoningChunk, onContentChunk);
@@ -3041,7 +3157,8 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 
       const json = await resp.json();
       if (json && json.error) {
-        throw new Error(typeof json.error === 'string' ? json.error : (json.error.message || 'Error en NVIDIA API'));
+        lastNvidiaUpstreamError = new Error(typeof json.error === 'string' ? json.error : (json.error.message || 'Error en NVIDIA API'));
+        continue;
       }
       const choice = json && json.choices && json.choices[0];
       const msg = choice && choice.message;
@@ -3049,9 +3166,19 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       if (reasoning) {
         onReasoningChunk(reasoning);
       }
-      const content = (msg && msg.content) || '';
+      let content = (msg && msg.content) || '';
+      if (!content && reasoning) {
+        content = extractAnswerFromReasoning(reasoning);
+      }
       if (content) {
-        onContentChunk(content);
+        const fastChunks = content.match(/(?:\S+\s*){1,4}|\n+/g) || [content];
+        for (let k = 0; k < fastChunks.length; k++) {
+          if (state.abortController) break;
+          onContentChunk(fastChunks[k]);
+          if (k < fastChunks.length - 1) {
+            await new Promise(r => setTimeout(r, 10));
+          }
+        }
       }
       if (!reasoning && !content) {
         throw new Error('NVIDIA API devolvió una respuesta vacía para GPT 6 Astra.');
@@ -3059,6 +3186,14 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       return;
     }
 
+    if ((state.settings.groqApiKey || '').trim()) {
+      await streamGroqCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults, webMeta);
+      return;
+    }
+
+    if (lastNvidiaUpstreamError) {
+      throw lastNvidiaUpstreamError;
+    }
     if (customProxyNetworkError) {
       throw new Error(customProxyNetworkError);
     }
@@ -3252,6 +3387,48 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
 
     if ((isNvidiaTextModel || hasGroqKey) && !isImageModel && !isVideoModel) {
+      let pendingStreamRender = false;
+      let wordBoundaryFlushTimer = null;
+      let renderedTextSnapshot = '';
+
+      const flushStreamingRender = function (forceAll) {
+        if (wordBoundaryFlushTimer) {
+          clearTimeout(wordBoundaryFlushTimer);
+          wordBoundaryFlushTimer = null;
+        }
+        let textToRender = accumulatedText;
+        if (!forceAll && textToRender.length > 0) {
+          const tailMatch = textToRender.match(/([A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{1,14})$/);
+          if (tailMatch && textToRender.length > tailMatch[1].length) {
+            textToRender = textToRender.slice(0, textToRender.length - tailMatch[1].length);
+            wordBoundaryFlushTimer = setTimeout(() => {
+              flushStreamingRender(true);
+            }, 55);
+          }
+        }
+        if (textToRender && textToRender !== renderedTextSnapshot) {
+          renderedTextSnapshot = textToRender;
+          contentDiv.innerHTML = renderMarkdown(textToRender) + '<span class=cursor-blink></span>';
+          scrollToBottom();
+        }
+      };
+
+      const scheduleStreamingRender = function (forceAll) {
+        if (forceAll) {
+          flushStreamingRender(true);
+          return;
+        }
+        if (pendingStreamRender) return;
+        pendingStreamRender = true;
+        const scheduleFn = typeof window.requestAnimationFrame === 'function'
+          ? window.requestAnimationFrame
+          : function (cb) { return setTimeout(cb, 16); };
+        scheduleFn(function () {
+          pendingStreamRender = false;
+          flushStreamingRender(false);
+        });
+      };
+
       const handleReasoningChunk = function (chunk) {
         thoughtText += chunk;
         if (thinkingBodyDiv) {
@@ -3273,8 +3450,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
           }
         }
         accumulatedText += chunk;
-        contentDiv.innerHTML = renderMarkdown(accumulatedText) + '<span class=cursor-blink></span>';
-        scrollToBottom();
+        scheduleStreamingRender(false);
       };
 
       try {
@@ -3287,8 +3463,16 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
           webResults,
           { attempted: attemptedWebSearch, query: webSearchQuery }
         );
+        if (!accumulatedText.trim() && thoughtText.trim()) {
+          accumulatedText = extractAnswerFromReasoning(thoughtText);
+        }
+        scheduleStreamingRender(true);
         usedGroq = true;
       } catch (err) {
+        if (wordBoundaryFlushTimer) {
+          clearTimeout(wordBoundaryFlushTimer);
+          wordBoundaryFlushTimer = null;
+        }
         if (phraseInterval) {
           clearInterval(phraseInterval);
           phraseInterval = null;
@@ -3305,7 +3489,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
           thinkingBodyDiv.textContent = filterThinkingContent(thoughtText, currentModel);
         }
 
-        const thinkingDuration = currentModel.includes('Opus') ? 2400 : 1600;
+        const thinkingDuration = isNvidiaTextModel ? 450 : (currentModel.includes('Opus') ? 1600 : 1000);
         await new Promise(r => setTimeout(r, thinkingDuration));
 
         if (state.abortController) {
@@ -3354,7 +3538,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
         contentDiv.innerHTML = renderMarkdown(accumulatedText);
         scrollToBottom();
       } else {
-        const tokens = fullTextResponse.split(/(\s+)/);
+        const tokens = fullTextResponse.match(/(?:\S+\s*){1,3}|\n+/g) || [fullTextResponse];
         const delayPerToken = SPEED_DELAYS[state.settings.streamSpeed] || SPEED_DELAYS.normal;
 
         for (let i = 0; i < tokens.length; i++) {
@@ -3497,33 +3681,265 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     dom.settingsModal.classList.remove('active');
   }
 
+  function setAuthFeedback(targetEl, message, type) {
+    if (!targetEl) return;
+    if (!message) {
+      targetEl.className = 'api-key-status-notice info hidden';
+      targetEl.textContent = '';
+      return;
+    }
+    const safeType = ['info', 'success', 'warning'].includes(type) ? type : 'info';
+    targetEl.className = 'api-key-status-notice ' + safeType;
+    targetEl.textContent = message;
+  }
+
+  function formatFirebaseAuthError(err) {
+    const code = (err && err.code) ? String(err.code) : '';
+    const msg = (err && err.message) ? String(err.message) : '';
+    if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password') || code.includes('auth/user-not-found')) {
+      return 'Correo o contraseña incorrectos. Verifica tus datos o regístrate.';
+    }
+    if (code.includes('auth/email-already-in-use')) {
+      return 'Este correo electrónico ya está registrado. Inicia sesión con tu contraseña.';
+    }
+    if (code.includes('auth/weak-password')) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (code.includes('auth/invalid-email')) {
+      return 'El formato del correo electrónico no es válido.';
+    }
+    if (code.includes('auth/popup-closed-by-user') || code.includes('auth/cancelled-popup-request')) {
+      return 'Se cerró la ventana de Google antes de completar el acceso.';
+    }
+    if (code.includes('auth/unauthorized-domain')) {
+      return 'Agrega este dominio en Firebase Console > Authentication > Settings > Authorized domains.';
+    }
+    if (code.includes('auth/too-many-requests')) {
+      return 'Demasiados intentos seguidos. Espera un momento e inténtalo de nuevo.';
+    }
+    if (code.includes('auth/network-request-failed')) {
+      return 'Error de red al conectar con Firebase Authentication.';
+    }
+    return msg || 'No se pudo completar la autenticación con Firebase.';
+  }
+
+  function setAuthModalMode(mode) {
+    const nextMode = ['login', 'register', 'reset'].includes(mode) ? mode : 'login';
+    state.authMode = nextMode;
+    setAuthFeedback(dom.authFeedbackNotice, '', 'info');
+
+    if (dom.authTabLoginBtn) {
+      dom.authTabLoginBtn.classList.toggle('active', nextMode !== 'register');
+    }
+    if (dom.authTabRegisterBtn) {
+      dom.authTabRegisterBtn.classList.toggle('active', nextMode === 'register');
+    }
+    if (dom.authNameFieldWrap) {
+      dom.authNameFieldWrap.classList.toggle('hidden', nextMode !== 'register');
+    }
+    if (dom.authPasswordFieldWrap) {
+      dom.authPasswordFieldWrap.classList.toggle('hidden', nextMode === 'reset');
+    }
+    if (dom.authPasswordInput) {
+      dom.authPasswordInput.required = nextMode !== 'reset';
+      dom.authPasswordInput.autocomplete = nextMode === 'register' ? 'new-password' : 'current-password';
+    }
+    if (dom.authForgotPasswordBtn) {
+      dom.authForgotPasswordBtn.classList.toggle('hidden', nextMode !== 'login');
+    }
+    if (dom.authBackToLoginBtn) {
+      dom.authBackToLoginBtn.classList.toggle('hidden', nextMode !== 'reset');
+    }
+    if (dom.authModalTitle && !state.authUser) {
+      dom.authModalTitle.textContent = nextMode === 'register'
+        ? 'Crear cuenta'
+        : (nextMode === 'reset' ? 'Recuperar contraseña' : 'Iniciar sesión');
+    }
+    if (dom.authSubmitBtn) {
+      dom.authSubmitBtn.textContent = nextMode === 'register'
+        ? 'Crear cuenta con correo'
+        : (nextMode === 'reset' ? 'Enviar enlace de recuperación' : 'Iniciar sesión con correo');
+    }
+  }
+
+  function updateAuthUIFromUser(user) {
+    state.authUser = user || null;
+    setAuthFeedback(dom.authFeedbackNotice, '', 'info');
+    setAuthFeedback(dom.authProfileFeedbackNotice, '', 'info');
+
+    if (user) {
+      const derivedName = (user.displayName || (user.email ? user.email.split('@')[0] : '') || state.settings.userName || 'Usuario').trim();
+      state.settings.userName = derivedName;
+      saveSettings();
+
+      if (dom.authLoggedOutView) dom.authLoggedOutView.classList.add('hidden');
+      if (dom.authLoggedInView) dom.authLoggedInView.classList.remove('hidden');
+      if (dom.authModalTitle) dom.authModalTitle.textContent = 'Tu cuenta';
+      if (dom.authAccountNameDisplay) dom.authAccountNameDisplay.textContent = derivedName;
+      if (dom.authAccountEmailDisplay) dom.authAccountEmailDisplay.textContent = user.email || 'Sesión activa en Firebase';
+      if (dom.customAccountNameInput) dom.customAccountNameInput.value = derivedName;
+      if (dom.authProviderBadge) {
+        const providers = Array.isArray(user.providerIds) ? user.providerIds : [];
+        dom.authProviderBadge.textContent = providers.includes('google.com')
+          ? 'Google · Firebase Auth'
+          : 'Correo electrónico · Firebase Auth';
+      }
+    } else {
+      if (dom.authLoggedInView) dom.authLoggedInView.classList.add('hidden');
+      if (dom.authLoggedOutView) dom.authLoggedOutView.classList.remove('hidden');
+      setAuthModalMode(state.authMode || 'login');
+    }
+
+    updateEmptyStateGreeting();
+  }
+
   function openNameModal() {
-    dom.customAccountNameInput.value = state.settings.userName || 'Usuario';
-    dom.nameModal.classList.add('active');
-    dom.customAccountNameInput.focus();
+    setAuthFeedback(dom.authFeedbackNotice, '', 'info');
+    setAuthFeedback(dom.authProfileFeedbackNotice, '', 'info');
+    updateAuthUIFromUser(state.authUser);
+    if (dom.nameModal) {
+      dom.nameModal.classList.add('active');
+    }
+    if (state.authUser) {
+      if (dom.customAccountNameInput) {
+        dom.customAccountNameInput.value = state.settings.userName || 'Usuario';
+        dom.customAccountNameInput.focus();
+      }
+    } else if (dom.authEmailInput) {
+      dom.authEmailInput.focus();
+    }
   }
 
   function closeNameModal() {
     if (!state.settings.userName || !state.settings.userName.trim()) {
-      showToast('Por favor escribe tu nombre de usuario para continuar');
-      dom.customAccountNameInput.focus();
-      return;
+      state.settings.userName = 'Usuario';
+      saveSettings();
+      updateEmptyStateGreeting();
     }
-    dom.nameModal.classList.remove('active');
+    if (dom.nameModal) {
+      dom.nameModal.classList.remove('active');
+    }
   }
 
-  function saveCustomName() {
+  async function saveCustomName() {
+    if (!dom.customAccountNameInput) return;
     const newName = dom.customAccountNameInput.value.trim();
     if (!newName) {
-      showToast('El nombre de usuario es obligatorio');
+      setAuthFeedback(dom.authProfileFeedbackNotice, 'Escribe un nombre válido para mostrar.', 'warning');
       dom.customAccountNameInput.focus();
       return;
     }
     state.settings.userName = newName;
     saveSettings();
+    if (state.authUser && window.megaFirebase && typeof window.megaFirebase.updateUserDisplayName === 'function') {
+      try {
+        await window.megaFirebase.updateUserDisplayName(newName);
+      } catch (err) {}
+    }
+    if (dom.authAccountNameDisplay) {
+      dom.authAccountNameDisplay.textContent = newName;
+    }
     updateEmptyStateGreeting();
-    dom.nameModal.classList.remove('active');
-    showToast('¡Bienvenido, ' + newName + '!');
+    if (dom.nameModal) {
+      dom.nameModal.classList.remove('active');
+    }
+    showToast('Perfil actualizado: ' + newName);
+  }
+
+  async function handleGoogleSignIn() {
+    if (!window.megaFirebase || typeof window.megaFirebase.signInWithGoogle !== 'function') {
+      setAuthFeedback(dom.authFeedbackNotice, 'Cargando módulos de Firebase Authentication, intenta en un segundo...', 'warning');
+      return;
+    }
+    setAuthFeedback(dom.authFeedbackNotice, '', 'info');
+    if (dom.googleSignInBtn) {
+      dom.googleSignInBtn.disabled = true;
+    }
+    try {
+      const user = await window.megaFirebase.signInWithGoogle();
+      if (user) {
+        if (dom.nameModal) dom.nameModal.classList.remove('active');
+        const displayName = user.displayName || (user.email ? user.email.split('@')[0] : 'Usuario');
+        showToast('¡Bienvenido, ' + displayName + '!');
+      }
+    } catch (err) {
+      setAuthFeedback(dom.authFeedbackNotice, formatFirebaseAuthError(err), 'warning');
+    } finally {
+      if (dom.googleSignInBtn) {
+        dom.googleSignInBtn.disabled = false;
+      }
+    }
+  }
+
+  async function handleEmailAuthSubmit(event) {
+    if (event) event.preventDefault();
+    if (!window.megaFirebase) {
+      setAuthFeedback(dom.authFeedbackNotice, 'Cargando módulos de Firebase Authentication, intenta en un segundo...', 'warning');
+      return;
+    }
+
+    const mode = state.authMode || 'login';
+    const email = dom.authEmailInput ? dom.authEmailInput.value.trim() : '';
+    const password = dom.authPasswordInput ? dom.authPasswordInput.value : '';
+    const registerName = dom.authRegisterNameInput ? dom.authRegisterNameInput.value.trim() : '';
+
+    if (!email) {
+      setAuthFeedback(dom.authFeedbackNotice, 'Ingresa tu correo electrónico.', 'warning');
+      if (dom.authEmailInput) dom.authEmailInput.focus();
+      return;
+    }
+
+    if (mode === 'reset') {
+      if (dom.authSubmitBtn) dom.authSubmitBtn.disabled = true;
+      try {
+        await window.megaFirebase.resetPassword(email);
+        setAuthFeedback(dom.authFeedbackNotice, 'Se envió un correo de recuperación a ' + email + '. Revisa tu bandeja de entrada.', 'success');
+      } catch (err) {
+        setAuthFeedback(dom.authFeedbackNotice, formatFirebaseAuthError(err), 'warning');
+      } finally {
+        if (dom.authSubmitBtn) dom.authSubmitBtn.disabled = false;
+      }
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setAuthFeedback(dom.authFeedbackNotice, 'La contraseña debe tener al menos 6 caracteres.', 'warning');
+      if (dom.authPasswordInput) dom.authPasswordInput.focus();
+      return;
+    }
+
+    if (dom.authSubmitBtn) dom.authSubmitBtn.disabled = true;
+    setAuthFeedback(dom.authFeedbackNotice, '', 'info');
+
+    try {
+      let user;
+      if (mode === 'register') {
+        user = await window.megaFirebase.registerWithEmail(email, password, registerName);
+      } else {
+        user = await window.megaFirebase.signInWithEmail(email, password);
+      }
+      if (dom.authPasswordInput) dom.authPasswordInput.value = '';
+      if (dom.nameModal) dom.nameModal.classList.remove('active');
+      const displayName = (user && (user.displayName || (user.email ? user.email.split('@')[0] : ''))) || registerName || 'Usuario';
+      showToast(mode === 'register' ? ('¡Cuenta creada! Bienvenido, ' + displayName) : ('¡Bienvenido, ' + displayName + '!'));
+    } catch (err) {
+      setAuthFeedback(dom.authFeedbackNotice, formatFirebaseAuthError(err), 'warning');
+    } finally {
+      if (dom.authSubmitBtn) dom.authSubmitBtn.disabled = false;
+    }
+  }
+
+  async function handleFirebaseLogout() {
+    if (!window.megaFirebase || typeof window.megaFirebase.logout !== 'function') return;
+    try {
+      await window.megaFirebase.logout();
+      state.authUser = null;
+      updateAuthUIFromUser(null);
+      if (dom.nameModal) dom.nameModal.classList.remove('active');
+      showToast('Sesión cerrada correctamente');
+    } catch (err) {
+      setAuthFeedback(dom.authProfileFeedbackNotice, formatFirebaseAuthError(err), 'warning');
+    }
   }
 
   function toggleTheme() {
@@ -3552,14 +3968,28 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       const code = decodeURIComponent(copyBtn.getAttribute('data-code') || '');
       copyToClipboard(code);
     }
-
-
   });
 
   function init() {
     cacheDom();
     loadPersistedData();
     applySettings();
+
+    if (window.megaFirebaseCurrentUser) {
+      updateAuthUIFromUser(window.megaFirebaseCurrentUser);
+    } else {
+      updateAuthUIFromUser(null);
+    }
+
+    window.addEventListener('megacld:auth-state', function (e) {
+      const user = e && e.detail ? e.detail.user : null;
+      updateAuthUIFromUser(user);
+    });
+
+    window.addEventListener('megacld:auth-error', function (e) {
+      const detail = e && e.detail ? e.detail : {};
+      setAuthFeedback(dom.authFeedbackNotice, formatFirebaseAuthError(detail), 'warning');
+    });
 
     if (!state.activeChatId && state.chats.length > 0) {
       state.activeChatId = state.chats[0].id;
@@ -3602,6 +4032,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
 
     if (dom.userProfileWidget) dom.userProfileWidget.addEventListener('click', openNameModal);
+    if (dom.topbarAuthBtn) dom.topbarAuthBtn.addEventListener('click', openNameModal);
     const editBtn = document.getElementById('editProfileBtn');
     if (editBtn) editBtn.addEventListener('click', openNameModal);
 
@@ -3614,6 +4045,36 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
         }
       });
     }
+    if (dom.authTabLoginBtn) {
+      dom.authTabLoginBtn.addEventListener('click', function () {
+        setAuthModalMode('login');
+      });
+    }
+    if (dom.authTabRegisterBtn) {
+      dom.authTabRegisterBtn.addEventListener('click', function () {
+        setAuthModalMode('register');
+      });
+    }
+    if (dom.authForgotPasswordBtn) {
+      dom.authForgotPasswordBtn.addEventListener('click', function () {
+        setAuthModalMode('reset');
+      });
+    }
+    if (dom.authBackToLoginBtn) {
+      dom.authBackToLoginBtn.addEventListener('click', function () {
+        setAuthModalMode('login');
+      });
+    }
+    if (dom.googleSignInBtn) {
+      dom.googleSignInBtn.addEventListener('click', handleGoogleSignIn);
+    }
+    if (dom.firebaseEmailAuthForm) {
+      dom.firebaseEmailAuthForm.addEventListener('submit', handleEmailAuthSubmit);
+    }
+    if (dom.logoutFirebaseBtn) {
+      dom.logoutFirebaseBtn.addEventListener('click', handleFirebaseLogout);
+    }
+    bindSecretVisibilityToggle(dom.toggleAuthPasswordBtn, dom.authPasswordInput, dom.authEyeShow, dom.authEyeHide);
 
     if (dom.themeToggleBtn) dom.themeToggleBtn.addEventListener('click', toggleTheme);
     if (dom.themeLightBtn) {
