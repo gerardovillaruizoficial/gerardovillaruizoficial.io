@@ -351,47 +351,30 @@
         </div>
 
         <div class="settings-group">
-          <h4>API de Imagen (Cloudflare Workers AI / Flux)</h4>
+          <h4>API de Imagen (Poe API / Flux-2-Flash)</h4>
           <div class="setting-item">
             <div class="setting-text">
-              <span class="setting-label">Cloudflare Account ID</span>
-              <span class="setting-desc">ID de cuenta de Cloudflare para ejecutar modelos de Workers AI.</span>
+              <span class="setting-label">Poe API Key (Opcional)</span>
+              <span class="setting-desc">La clave predeterminada se ejecuta protegida en el servidor. Solo ingresa una sk-poe-... si deseas sobrescribirla.</span>
             </div>
           </div>
           <div class="api-key-input-row">
             <div class="api-key-input-wrapper">
-              <input type="text" id="cloudflareAccountIdInput" class="api-key-input" placeholder="Tu Account ID de Cloudflare..." autocomplete="off" spellcheck="false" style="padding-right: 12px;">
-            </div>
-          </div>
-
-          <div class="setting-item" style="margin-top: 10px;">
-            <div class="setting-text">
-              <span class="setting-label">Cloudflare API Token</span>
-              <span class="setting-desc">Token de API con permisos de Workers AI (Read/Edit).</span>
-            </div>
-          </div>
-          <div class="api-key-input-row">
-            <div class="api-key-input-wrapper">
-              <input type="password" id="cloudflareApiTokenInput" class="api-key-input" placeholder="Bearer Token de Cloudflare..." autocomplete="off" spellcheck="false">
-              <button type="button" id="toggleCloudflareTokenVisibilityBtn" class="icon-button api-key-eye-btn" aria-label="Mostrar u ocultar clave">
-                <svg id="eyeIconCloudflareShow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <input type="password" id="poeApiKeyInput" class="api-key-input" placeholder="Clave protegida activa en servidor (o pega sk-poe-...)" autocomplete="off" spellcheck="false">
+              <button type="button" id="togglePoeKeyVisibilityBtn" class="icon-button api-key-eye-btn" aria-label="Mostrar u ocultar clave">
+                <svg id="eyeIconPoeShow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
-                <svg id="eyeIconCloudflareHide" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg id="eyeIconPoeHide" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                   <line x1="1" y1="1" x2="23" y2="23"></line>
                 </svg>
               </button>
             </div>
-            <button type="button" id="saveCloudflareConfigBtn" class="primary-btn api-save-btn">Guardar</button>
+            <button type="button" id="savePoeConfigBtn" class="primary-btn api-save-btn">Guardar</button>
           </div>
-          <div class="api-key-input-row">
-            <div class="api-key-input-wrapper">
-              <input type="url" id="cloudflareWorkerUrlInput" class="api-key-input" placeholder="URL de Proxy Worker CORS opcional (ej. https://tu-worker.workers.dev)" autocomplete="off" spellcheck="false">
-            </div>
-          </div>
-          <div id="cloudflareStatusNotice" class="api-key-status-notice"></div>
+          <div id="poeStatusNotice" class="api-key-status-notice"></div>
         </div>
 
         <div class="settings-group">
@@ -843,11 +826,11 @@
                   <circle cx="12" cy="12" r="2"/>
                 </svg>
                 <span class="model-card-name">Flux.2</span>
-                <span class="model-card-badge pro">Cloudflare</span>
+                <span class="model-card-badge pro">Poe API</span>
               </div>
               <div class="model-card-radio"></div>
             </div>
-            <p class="model-card-desc">Nueva generación de síntesis visual con mayor fidelidad fotorrealista y detalles cinemáticos en Cloudflare Workers AI.</p>
+            <p class="model-card-desc">Síntesis visual de alta fidelidad fotorrealista y detalles cinemáticos con flux-2-flash a través de Poe API.</p>
           </div>
           <div class="model-card-item" data-model="Flux">
             <div class="model-card-header">
@@ -861,11 +844,11 @@
                   <circle cx="12" cy="12" r="2"/>
                 </svg>
                 <span class="model-card-name">Flux</span>
-                <span class="model-card-badge default">Cloudflare</span>
+                <span class="model-card-badge default">Poe API</span>
               </div>
               <div class="model-card-radio"></div>
             </div>
-            <p class="model-card-desc">Generación rápida de imágenes de alta fidelidad (@cf/black-forest-labs/flux-1-schnell) en Cloudflare Workers AI.</p>
+            <p class="model-card-desc">Generación rápida de imágenes de alta fidelidad ejecutada con el modelo flux-2-flash en Poe API.</p>
           </div>
         </div>
 

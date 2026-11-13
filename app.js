@@ -10,7 +10,7 @@
     } else if (lower.includes('flux')) {
       const isFlux2 = lower.includes('flux.2');
       const modelDisplayName = isFlux2 ? 'Flux.2' : 'Flux';
-      identityPrefix = `Eres ${modelDisplayName}, un modelo avanzado de generación visual desarrollado por Black Forest Labs e integrado a través de Cloudflare Workers AI. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${modelDisplayName} de Cloudflare Workers AI (ejemplo: "Soy ${modelDisplayName} de Cloudflare Workers AI."). Responde siempre de forma educada, servicial y natural en español.`;
+      identityPrefix = `Eres ${modelDisplayName}, un modelo avanzado de generación visual desarrollado por Black Forest Labs (flux-2-flash) e integrado a través de Poe API. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${modelDisplayName} vía Poe API (ejemplo: "Soy ${modelDisplayName} en Poe API."). Responde siempre de forma educada, servicial y natural en español.`;
     } else {
       identityPrefix = `Eres ${model}, un modelo de inteligencia artificial desarrollado por Anthropic. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${model} de Anthropic (ejemplo: "Soy ${model} de Anthropic."). NUNCA menciones a Qwen, OpenAI, Meta, Alibaba ni ningún modelo o creador técnico externo. Responde siempre de forma educada, servicial y natural en español.`;
     }
@@ -57,12 +57,12 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       'Procesando descriptores visuales en el espacio latente de OpenAI Sunburst.\nAlineando fidelidad geométrica, balance cromático y composición estética de OpenAI.\nGenerando síntesis gráfica final con GPT Image 2.6 Sunburst.'
     ],
     'Flux.2': [
-      'Interpretando prompt visual y afinando descriptores semánticos en Cloudflare Workers AI.\nCalculando tensores de difusión de segunda generación en la red perimetral de Cloudflare.\nAplicando optimización latente con Flux.2 en Cloudflare.\nRenderizando imagen final de alta resolución.',
-      'Alineando composición cinemática e iluminación avanzada en Cloudflare Workers AI.\nProcesando inferencia acelerada con Flux.2.\nGenerando síntesis gráfica en ultra alta definición.'
+      'Interpretando prompt visual y afinando descriptores semánticos en Poe API.\nCalculando tensores de difusión de flux-2-flash mediante Poe API.\nAplicando optimización latente de alta fidelidad con flux-2-flash.\nRenderizando imagen final de alta resolución.',
+      'Alineando composición cinemática e iluminación avanzada en Poe API.\nProcesando inferencia visual con el modelo flux-2-flash.\nGenerando síntesis gráfica en ultra alta definición.'
     ],
     'Flux': [
-      'Interpretando prompt visual y estilo de composición en Cloudflare Workers AI.\nConfigurando tensores de inferencia para @cf/black-forest-labs/flux-1-schnell.\nEjecutando inferencia en la red perimetral de Cloudflare.\nAplicando pasos de difusión guiada de Flux en Cloudflare Workers AI.',
-      'Sintetizando escena visual con el motor Flux en Cloudflare Workers AI.\nAlineando iluminación volumétrica y paleta cromática.\nGenerando salida gráfica en alta fidelidad con el motor Flux.'
+      'Interpretando prompt visual y estilo de composición en Poe API.\nConfigurando petición segura hacia el modelo flux-2-flash.\nEjecutando inferencia de difusión guiada en Poe API.\nFinalizando renderizado gráfico con flux-2-flash.',
+      'Sintetizando escena visual con flux-2-flash en Poe API.\nAlineando iluminación volumétrica y paleta cromática.\nGenerando salida gráfica en alta fidelidad.'
     ],
     'Claude Fable 5.2': [
       'Desplegando procesamiento conceptual refinado con proyección multimodal (OpenAI GPT-OSS 120B).\nIntegrando perspectivas holísticas y refinamiento estético de las soluciones.\nVerificando consistencia armónica en la respuesta final.',
@@ -144,9 +144,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       enableThinking: true,
       enableWebSearch: false,
       groqApiKey: '',
-      cloudflareAccountId: '',
-      cloudflareApiToken: '',
-      cloudflareWorkerUrl: '',
+      poeApiKey: '',
       stripeTestSecretKey: '',
       stripeTestPaymentLink: '',
       lastVerifiedStripeSessionId: '',
@@ -235,14 +233,12 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.eyeIconHide = document.getElementById('eyeIconHide');
     dom.saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
     dom.apiKeyStatusNotice = document.getElementById('apiKeyStatusNotice');
-    dom.cloudflareAccountIdInput = document.getElementById('cloudflareAccountIdInput');
-    dom.cloudflareApiTokenInput = document.getElementById('cloudflareApiTokenInput');
-    dom.cloudflareWorkerUrlInput = document.getElementById('cloudflareWorkerUrlInput');
-    dom.toggleCloudflareTokenVisibilityBtn = document.getElementById('toggleCloudflareTokenVisibilityBtn');
-    dom.eyeIconCloudflareShow = document.getElementById('eyeIconCloudflareShow');
-    dom.eyeIconCloudflareHide = document.getElementById('eyeIconCloudflareHide');
-    dom.saveCloudflareConfigBtn = document.getElementById('saveCloudflareConfigBtn');
-    dom.cloudflareStatusNotice = document.getElementById('cloudflareStatusNotice');
+    dom.poeApiKeyInput = document.getElementById('poeApiKeyInput');
+    dom.togglePoeKeyVisibilityBtn = document.getElementById('togglePoeKeyVisibilityBtn');
+    dom.eyeIconPoeShow = document.getElementById('eyeIconPoeShow');
+    dom.eyeIconPoeHide = document.getElementById('eyeIconPoeHide');
+    dom.savePoeConfigBtn = document.getElementById('savePoeConfigBtn');
+    dom.poeStatusNotice = document.getElementById('poeStatusNotice');
     dom.clearAllChatsBtn = document.getElementById('clearAllChatsBtn');
     dom.toastNotification = document.getElementById('toastNotification');
     dom.toastMessage = document.getElementById('toastMessage');
@@ -367,8 +363,8 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       const isFlux2 = lower.includes('flux.2');
       const modelDisplayName = isFlux2 ? 'Flux.2' : 'Flux';
       return text
-        .replace(/(?:creado|desarrollado|entrenado)\s+por\s+(?:Anthropic|Qwen|Meta|Alibaba|OpenAI|Pollinations)/gi, 'desarrollado por Cloudflare Workers AI')
-        .replace(/(?:un modelo de lenguaje|un asistente|una IA|un modelo)\s+(?:de\s+inteligencia\s+artificial\s+)?(?:creado|desarrollado)\s+por\s+(?:Anthropic|Qwen|Meta|Alibaba|OpenAI|Pollinations)/gi, `${modelDisplayName} de Cloudflare Workers AI`);
+        .replace(/(?:creado|desarrollado|entrenado)\s+por\s+(?:Anthropic|Qwen|Meta|Alibaba|OpenAI|Pollinations|Cloudflare)/gi, 'ejecutado en Poe API')
+        .replace(/(?:un modelo de lenguaje|un asistente|una IA|un modelo)\s+(?:de\s+inteligencia\s+artificial\s+)?(?:creado|desarrollado)\s+por\s+(?:Anthropic|Qwen|Meta|Alibaba|OpenAI|Pollinations|Cloudflare)/gi, `${modelDisplayName} vía Poe API`);
     }
     return text
       .replace(/(?:creado|desarrollado|entrenado)\s+por\s+(?:OpenAI|Qwen|Meta|Alibaba)/gi, 'desarrollado por Anthropic')
@@ -476,7 +472,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
           <div class="generated-image-card">
             <img src="${imgUrl}" alt="${altText}" class="generated-preview-img" loading="lazy">
             <div class="image-card-footer">
-              <a href="${imgUrl}" ${isDataUrl ? 'download="cloudflare-flux-render.png"' : 'target="_blank" rel="noopener noreferrer"'} class="image-open-external-btn">
+              <a href="${imgUrl}" ${isDataUrl ? 'download="poe-flux-render.png"' : 'target="_blank" rel="noopener noreferrer"'} class="image-open-external-btn">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                   <polyline points="15 3 21 3 21 9"></polyline>
@@ -596,14 +592,8 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       dom.groqApiKeyInput.value = state.settings.groqApiKey || '';
       updateApiKeyStatusBadge();
     }
-    if (dom.cloudflareAccountIdInput) {
-      dom.cloudflareAccountIdInput.value = state.settings.cloudflareAccountId || '';
-    }
-    if (dom.cloudflareApiTokenInput) {
-      dom.cloudflareApiTokenInput.value = state.settings.cloudflareApiToken || '';
-    }
-    if (dom.cloudflareWorkerUrlInput) {
-      dom.cloudflareWorkerUrlInput.value = state.settings.cloudflareWorkerUrl || '';
+    if (dom.poeApiKeyInput) {
+      dom.poeApiKeyInput.value = state.settings.poeApiKey || '';
     }
     if (dom.stripeTestSecretKeyInput) {
       dom.stripeTestSecretKeyInput.value = state.settings.stripeTestSecretKey || '';
@@ -611,7 +601,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     if (dom.stripeTestPaymentLinkInput) {
       dom.stripeTestPaymentLinkInput.value = state.settings.stripeTestPaymentLink || '';
     }
-    updateCloudflareStatusBadge();
+    updatePoeStatusBadge();
     updateStripeStatusBadge();
     ensureValidModelForPlan();
     updateModelSelectionUI(state.settings.selectedModel || 'Claude Sonnet 4.6');
@@ -1651,7 +1641,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       }
     });
     updateApiKeyStatusBadge();
-    updateCloudflareStatusBadge();
+    updatePoeStatusBadge();
     saveSettings();
   }
 
@@ -2163,18 +2153,18 @@ La información está lista para procesarse. ¿Qué tarea te gustaría que reali
 
       if (lowerModel.includes('flux.2')) {
         const identityResponses = [
-          `Soy Flux.2, un modelo generativo de imágenes de nueva generación ejecutado sobre Cloudflare Workers AI. Cuento con mayor fidelidad fotográfica, detalle estructural y síntesis ultrarrápida. ¿Qué imagen deseas generar hoy?`,
-          `Soy Flux.2 en Cloudflare Workers AI. Ofrezco capacidades avanzadas de renderizado visual con alta resolución y comprensión semántica profunda. ¿En qué creación visual te gustaría trabajar?`,
-          `Soy Flux.2 de Cloudflare Workers AI. Despliego la segunda generación de modelos Flux en la red global de Cloudflare. ¿Qué escena o diseño te gustaría crear?`
+          `Soy Flux.2, un modelo generativo de imágenes de nueva generación ejecutado con **flux-2-flash** a través de **Poe API**. Cuento con alta fidelidad fotorrealista, renderizado de texto y detalles cinemáticos. ¿Qué imagen deseas generar hoy?`,
+          `Soy Flux.2 en Poe API (modelo **flux-2-flash**). Ofrezco capacidades avanzadas de síntesis visual con comprensión semántica profunda. ¿En qué creación visual te gustaría trabajar?`,
+          `Soy Flux.2 vía Poe API (**flux-2-flash**). Estoy listo para transformar tus descripciones en imágenes de alta definición. ¿Qué escena o diseño te gustaría crear?`
         ];
         return identityResponses[Math.floor(Math.random() * identityResponses.length)];
       }
 
       if (lowerModel.includes('flux')) {
         const identityResponses = [
-          `Soy Flux, un modelo avanzado de generación visual optimizado con el motor Flux en Cloudflare Workers AI (@cf/black-forest-labs/flux-1-schnell). ¿Qué imagen te gustaría crear hoy?`,
-          `Soy Flux, el motor generativo de imágenes en Cloudflare Workers AI. Cuento con renderizado rápido y síntesis de alta definición. ¿Qué diseño deseas crear?`,
-          `Soy Flux de Cloudflare Workers AI. Cuento con capacidades de difusión rápida y renderizado de alta fidelidad. ¿Qué imagen deseas generar?`
+          `Soy Flux, impulsado por el modelo **flux-2-flash** a través de **Poe API**. ¿Qué imagen te gustaría crear hoy?`,
+          `Soy Flux en Poe API (modelo **flux-2-flash**). Cuento con síntesis visual avanzada y renderizado de alta fidelidad. ¿Qué diseño deseas crear?`,
+          `Soy Flux vía Poe API. Uso **flux-2-flash** para generar escenas detalladas y fotorrealistas. ¿Qué imagen deseas generar?`
         ];
         return identityResponses[Math.floor(Math.random() * identityResponses.length)];
       }
@@ -2191,37 +2181,27 @@ La información está lista para procesarse. ¿Qué tarea te gustaría que reali
       const contextualPrompt = await buildContextualVisualPrompt(userQuery, chatMessages, 'image', attachment);
       const cleanPrompt = (contextualPrompt || userQuery || 'Un render artístico de alta definición').replace(/[#*`]/g, '').trim().slice(0, 420);
       const safeAlt = cleanPrompt.replace(/[\[\]()\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220) || 'Imagen generada';
-      const accountId = (state.settings.cloudflareAccountId || '').trim();
-      const apiToken = (state.settings.cloudflareApiToken || '').trim();
-
-      if (!accountId || !apiToken) {
-        return `Para generar imágenes con **${currentModel}** mediante Cloudflare Workers AI, por favor ingresa tu **Account ID** y tu **API Token** en la sección de **Configuración** ⚙️.
-
-### Pasos para configurar Cloudflare Workers AI:
-1. Accede a tu panel en [dash.cloudflare.com](https://dash.cloudflare.com/).
-2. Copia tu **Account ID** situado en la barra lateral derecha.
-3. Ve a **My Profile > API Tokens** y crea un token con permisos para **Workers AI (Read/Edit)**.
-4. Pégalos en **Configuración > API de Imagen (Cloudflare Workers AI)** en MegaCLD y haz clic en **Guardar**.`;
-      }
 
       try {
         if (typeof onMediaPromptResolved === 'function') {
           onMediaPromptResolved(cleanPrompt, 'image');
         }
-        const dataUrl = await generateCloudflareImage(cleanPrompt, currentModel);
-        return `![${safeAlt}](${dataUrl})`;
+        const imageResultUrl = await generatePoeImage(cleanPrompt, currentModel);
+        return `![${safeAlt}](${imageResultUrl})`;
       } catch (err) {
-        if (err && err.code === 'CORS_BLOCKED') {
-          return `El navegador bloqueó la petición directa a \`api.cloudflare.com\` por política **CORS** (Cloudflare no permite llamadas directas con \`Authorization\` desde el navegador sin proxy).
+        if (err && err.code === 'BACKEND_REQUIRED') {
+          return `Para usar la clave predeterminada de **Poe API** (**flux-2-flash**) sin exponerla en el navegador, abre la app usando **\`node server.js\`** (con \`POE_API_KEY\` en \`.env\`) o despliégala en **Netlify Functions** (\`/.netlify/functions/poe-image\` con \`POE_API_KEY\`).
 
-Para generarlo de verdad tienes 3 opciones:
-- Ejecuta el servidor local (\`node server.js\`) que incluye \`/api/cloudflare/image\`.
-- Despliega la app en **Netlify** (usando Git o Netlify CLI para activar \`netlify/functions/cloudflare-image.js\`).
-- Crea un pequeño **Cloudflare Worker Proxy** con CORS y pega su URL en **Configuración** ⚙️ (*URL de Proxy Worker CORS*).`;
+También puedes pegar una clave personal temporal en **Configuración ⚙️ > API de Imagen (Poe API / Flux-2-Flash)** si estás previsualizando sin servidor.`;
         }
-        return `No se pudo completar la generación en Cloudflare Workers AI (**${escapeHtml(err.message)}**).
+        if (err && (err.code === 'NO_POE_AUTH' || err.message === 'NO_POE_AUTH')) {
+          return `No hay una **POE_API_KEY** configurada en el servidor ni en **Configuración** ⚙️.
 
-Verifica en **Configuración** ⚙️ que tu **Account ID** y **API Token** sean correctos y dispongan del permiso activo para Workers AI.`;
+Configura \`POE_API_KEY\` en \`.env\` (para \`server.js\`) / variables de entorno en Netlify, o ingresa tu clave \`sk-poe-...\` en **Configuración > API de Imagen (Poe API / Flux-2-Flash)**.`;
+        }
+        return `No se pudo completar la generación en Poe API (**${escapeHtml(err.message)}**).
+
+Verifica que el servidor esté ejecutándose o revisa tu configuración de **Poe API** en **Configuración** ⚙️.`;
       }
     }
 
@@ -2369,186 +2349,182 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
   }
 
-  function updateCloudflareStatusBadge() {
-    if (!dom.cloudflareStatusNotice) return;
-    const accountId = (state.settings.cloudflareAccountId || '').trim();
-    const token = (state.settings.cloudflareApiToken || '').trim();
+  function updatePoeStatusBadge() {
+    if (!dom.poeStatusNotice) return;
+    const customKey = (state.settings.poeApiKey || '').trim();
 
-    if (accountId && token) {
-      dom.cloudflareStatusNotice.className = 'api-key-status-notice success';
-      dom.cloudflareStatusNotice.textContent = 'Cloudflare Workers AI activo: Account ID y Token configurados para Flux y Flux.2.';
-    } else if (accountId || token) {
-      dom.cloudflareStatusNotice.className = 'api-key-status-notice warning';
-      dom.cloudflareStatusNotice.textContent = 'Configuración incompleta: ingresa tanto el Account ID como el API Token.';
-    } else {
-      dom.cloudflareStatusNotice.className = 'api-key-status-notice info';
-      dom.cloudflareStatusNotice.textContent = 'Ingresa tu Account ID y API Token de Cloudflare para generar imágenes con Flux / Flux.2.';
+    if (customKey) {
+      dom.poeStatusNotice.className = 'api-key-status-notice success';
+      dom.poeStatusNotice.textContent = 'Poe API configurada con clave personalizada (modelo flux-2-flash).';
+      return;
+    }
+
+    dom.poeStatusNotice.className = 'api-key-status-notice info';
+    dom.poeStatusNotice.textContent = 'Usando clave predeterminada protegida en servidor cuando server.js o Netlify Functions esté activo (flux-2-flash).';
+
+    if (typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+      const statusEndpoints = ['/api/poe/status', '/.netlify/functions/poe-image'];
+      (async function () {
+        for (let i = 0; i < statusEndpoints.length; i++) {
+          try {
+            const r = await fetch(statusEndpoints[i]);
+            const ct = r.headers.get('content-type') || '';
+            if (!r.ok || !ct.includes('application/json')) continue;
+            const data = await r.json();
+            if (data && data.serverActive && dom.poeStatusNotice && !(state.settings.poeApiKey || '').trim()) {
+              if (data.envConfigured) {
+                dom.poeStatusNotice.className = 'api-key-status-notice success';
+                dom.poeStatusNotice.textContent = 'Poe API activa por defecto desde el servidor (.env / flux-2-flash; clave oculta en navegadores).';
+              } else {
+                dom.poeStatusNotice.className = 'api-key-status-notice warning';
+                dom.poeStatusNotice.textContent = 'Servidor activo sin POE_API_KEY en el entorno. Agrégala en .env/Netlify o pega una sk-poe-... arriba.';
+              }
+            }
+            return;
+          } catch (e) {}
+        }
+      })();
     }
   }
 
-  function normalizeCloudflareWorkerUrl(rawUrl) {
-    const trimmed = (rawUrl || '').trim().replace(/\/+$/, '');
-    if (!trimmed) return '';
-    if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith('/')) {
-      return 'https://' + trimmed;
-    }
-    return trimmed;
+  function extractPoeImageUrlFromText(text) {
+    if (typeof text !== 'string' || !text.trim()) return '';
+    const mdImg = text.match(/!\[[^\]]*\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/i);
+    if (mdImg && mdImg[1]) return mdImg[1];
+    const mdLink = text.match(/\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/i);
+    if (mdLink && mdLink[1]) return mdLink[1];
+    const dataUri = text.match(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/);
+    if (dataUri && dataUri[0]) return dataUri[0];
+    const rawUrl = text.match(/https?:\/\/[^\s"'<>)]+/i);
+    if (rawUrl && rawUrl[0]) return rawUrl[0];
+    return '';
   }
 
-  function blobToDataUrl(blob) {
-    return new Promise(function (resolve, reject) {
-      const reader = new FileReader();
-      reader.onloadend = function () { resolve(reader.result); };
-      reader.onerror = function () { reject(new Error('Error al decodificar la imagen de Cloudflare.')); };
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  async function parseCloudflareImageResponse(response) {
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Cloudflare API Error (${response.status}): ${errText}`);
+  function extractPoeImageUrl(data) {
+    if (!data || typeof data !== 'object') return '';
+    if (data.image) return data.image;
+    if (Array.isArray(data.data) && data.data[0]) {
+      if (data.data[0].url) return data.data[0].url;
+      if (data.data[0].b64_json) return 'data:image/png;base64,' + data.data[0].b64_json;
     }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const json = await response.json();
-      if (json && json.error) {
-        throw new Error(json.error);
+    const choice = Array.isArray(data.choices) ? data.choices[0] : null;
+    const content = choice && choice.message ? choice.message.content : null;
+    if (Array.isArray(content)) {
+      for (let i = 0; i < content.length; i++) {
+        const part = content[i];
+        if (!part) continue;
+        if (part.image_url && part.image_url.url) return part.image_url.url;
+        if (typeof part.url === 'string' && part.url) return part.url;
+        if (typeof part.text === 'string') {
+          const found = extractPoeImageUrlFromText(part.text);
+          if (found) return found;
+        }
       }
-      if (json && json.image) {
-        return json.image;
-      }
-      if (json && json.result && json.result.image) {
-        const imgData = json.result.image;
-        return imgData.startsWith('data:') ? imgData : 'data:image/png;base64,' + imgData;
-      }
-      throw new Error('Respuesta de Cloudflare sin imagen válida.');
+      return '';
     }
-
-    const blob = await response.blob();
-    return blobToDataUrl(blob);
+    return extractPoeImageUrlFromText(content);
   }
 
-  async function generateCloudflareImage(prompt, modelName) {
-    const accountId = (state.settings.cloudflareAccountId || '').trim();
-    const apiToken = (state.settings.cloudflareApiToken || '').trim();
-    const customWorkerUrl = normalizeCloudflareWorkerUrl(state.settings.cloudflareWorkerUrl);
-
-    if (!accountId || !apiToken) {
-      throw new Error('NO_CLOUDFLARE_AUTH');
-    }
-
+  async function generatePoeImage(prompt, modelName) {
+    const customKey = (state.settings.poeApiKey || '').trim();
     const isHttpOrigin = typeof window !== 'undefined' &&
       window.location &&
       (window.location.protocol === 'http:' || window.location.protocol === 'https:');
 
-    const proxyEndpoints = [];
-    if (customWorkerUrl) {
-      proxyEndpoints.push(customWorkerUrl);
-    }
     if (isHttpOrigin) {
-      proxyEndpoints.push('/api/cloudflare/image');
-      proxyEndpoints.push('/.netlify/functions/cloudflare-image');
-    }
-
-    const proxyPayload = JSON.stringify({
-      accountId: accountId,
-      apiToken: apiToken,
-      prompt: prompt,
-      modelName: modelName || ''
-    });
-
-    let customProxyError = '';
-
-    for (let i = 0; i < proxyEndpoints.length; i++) {
-      const proxyUrl = proxyEndpoints[i];
-      let proxyResp;
-      try {
-        proxyResp = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: proxyPayload
-        });
-      } catch (networkErr) {
-        if (customWorkerUrl && proxyUrl === customWorkerUrl) {
-          customProxyError = 'No se pudo conectar con el Proxy Worker configurado (' + (networkErr && networkErr.message ? networkErr.message : 'error de red') + ').';
-        }
-        continue;
+      const proxyPayloadObj = {
+        prompt: prompt,
+        modelName: modelName || 'flux-2-flash'
+      };
+      if (customKey) {
+        proxyPayloadObj.apiKey = customKey;
       }
+      const proxyPayload = JSON.stringify(proxyPayloadObj);
+      const proxyEndpoints = ['/api/poe/image', '/.netlify/functions/poe-image'];
 
-      const contentType = proxyResp.headers.get('content-type') || '';
+      for (let i = 0; i < proxyEndpoints.length; i++) {
+        const proxyUrl = proxyEndpoints[i];
+        let proxyResp;
+        try {
+          proxyResp = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: proxyPayload
+          });
+        } catch (networkErr) {
+          continue;
+        }
 
-      if (!proxyResp.ok) {
+        const contentType = proxyResp.headers.get('content-type') || '';
+
+        if (!proxyResp.ok) {
+          if (!contentType.includes('application/json')) {
+            continue;
+          }
+          const errData = await proxyResp.json().catch(function () { return null; });
+          const errMsg = errData && (errData.error || (errData.detail && String(errData.detail)));
+          if (errMsg === 'NO_POE_AUTH') {
+            const authErr = new Error('NO_POE_AUTH');
+            authErr.code = 'NO_POE_AUTH';
+            throw authErr;
+          }
+          if ((proxyResp.status === 404 || proxyResp.status === 405) && !(typeof errMsg === 'string' && errMsg.startsWith('Poe API Error'))) {
+            continue;
+          }
+          throw new Error(errMsg || ('Error en Poe API (' + proxyResp.status + ')'));
+        }
+
         if (!contentType.includes('application/json')) {
           continue;
         }
-        const errData = await proxyResp.json().catch(function () { return null; });
-        const errMsg = errData && (errData.error || (Array.isArray(errData.errors) && errData.errors[0] && errData.errors[0].message));
-        if ((proxyResp.status === 404 || proxyResp.status === 405) && !(typeof errMsg === 'string' && errMsg.startsWith('Cloudflare API Error'))) {
-          continue;
+
+        const json = await proxyResp.json();
+        if (json && json.error) {
+          throw new Error(json.error);
         }
-        throw new Error(errMsg || ('Error en proxy Cloudflare (' + proxyResp.status + ')'));
+        const imageUrl = extractPoeImageUrl(json);
+        if (!imageUrl) {
+          throw new Error('Respuesta de Poe API sin imagen válida.');
+        }
+        return imageUrl;
       }
-
-      if (!contentType.includes('application/json') && !contentType.startsWith('image/')) {
-        continue;
-      }
-
-      return parseCloudflareImageResponse(proxyResp);
     }
 
-    const isFlux2 = (modelName || '').toLowerCase().includes('flux.2');
-    const cfModelId = isFlux2
-      ? '@cf/black-forest-labs/flux-2-dev'
-      : '@cf/black-forest-labs/flux-1-schnell';
-    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${cfModelId}`;
-
-    let fetchOptions;
-    if (isFlux2) {
-      const formData = new FormData();
-      formData.append('prompt', prompt);
-      formData.append('steps', '25');
-      formData.append('width', '1024');
-      formData.append('height', '1024');
-      fetchOptions = {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + apiToken
-        },
-        body: formData
-      };
-    } else {
-      fetchOptions = {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + apiToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          num_steps: 4
-        })
-      };
+    if (!customKey) {
+      const backendErr = new Error('BACKEND_REQUIRED');
+      backendErr.code = 'BACKEND_REQUIRED';
+      throw backendErr;
     }
 
-    let response;
-    try {
-      response = await fetch(endpoint, fetchOptions);
-    } catch (directErr) {
-      if (customProxyError) {
-        throw new Error(customProxyError);
-      }
-      const msg = (directErr && directErr.message ? directErr.message : '').toLowerCase();
-      if (directErr instanceof TypeError || msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) {
-        const corsErr = new Error('Bloqueo CORS del navegador al conectar directamente con api.cloudflare.com');
-        corsErr.code = 'CORS_BLOCKED';
-        throw corsErr;
-      }
-      throw directErr;
+    const poeResp = await fetch('https://api.poe.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + customKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'flux-2-flash',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        stream: false
+      })
+    });
+
+    if (!poeResp.ok) {
+      const errText = await poeResp.text();
+      throw new Error(`Poe API Error (${poeResp.status}): ${errText}`);
     }
 
-    return parseCloudflareImageResponse(response);
+    const directJson = await poeResp.json();
+    const directUrl = extractPoeImageUrl(directJson);
+    if (!directUrl) {
+      throw new Error('Respuesta de Poe API sin imagen válida.');
+    }
+    return directUrl;
   }
 
   async function streamGroqCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults = [], webMeta = null) {
@@ -3422,74 +3398,42 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       });
     }
 
-    function persistCloudflareConfigFromInputs(showMessage) {
-      const accountId = dom.cloudflareAccountIdInput ? dom.cloudflareAccountIdInput.value.trim() : '';
-      const token = dom.cloudflareApiTokenInput ? dom.cloudflareApiTokenInput.value.trim() : '';
-      const workerUrl = dom.cloudflareWorkerUrlInput ? normalizeCloudflareWorkerUrl(dom.cloudflareWorkerUrlInput.value) : '';
-      state.settings.cloudflareAccountId = accountId;
-      state.settings.cloudflareApiToken = token;
-      state.settings.cloudflareWorkerUrl = workerUrl;
-      if (dom.cloudflareWorkerUrlInput && dom.cloudflareWorkerUrlInput.value !== workerUrl) {
-        dom.cloudflareWorkerUrlInput.value = workerUrl;
-      }
+    function persistPoeConfigFromInputs(showMessage) {
+      const apiKey = dom.poeApiKeyInput ? dom.poeApiKeyInput.value.trim() : '';
+      state.settings.poeApiKey = apiKey;
       saveSettings();
-      updateCloudflareStatusBadge();
+      updatePoeStatusBadge();
       if (showMessage) {
-        showToast(accountId && token ? 'Configuración de Cloudflare guardada' : 'Configuración de Cloudflare actualizada');
+        showToast(apiKey ? 'Clave personalizada de Poe API guardada' : 'Usando clave predeterminada de Poe API en servidor');
       }
     }
 
-    if (dom.saveCloudflareConfigBtn) {
-      dom.saveCloudflareConfigBtn.addEventListener('click', function () {
-        persistCloudflareConfigFromInputs(true);
+    if (dom.savePoeConfigBtn) {
+      dom.savePoeConfigBtn.addEventListener('click', function () {
+        persistPoeConfigFromInputs(true);
       });
     }
 
-    if (dom.cloudflareWorkerUrlInput) {
-      dom.cloudflareWorkerUrlInput.addEventListener('change', function () {
-        persistCloudflareConfigFromInputs(false);
-      });
-      dom.cloudflareWorkerUrlInput.addEventListener('keydown', function (e) {
+    if (dom.poeApiKeyInput) {
+      dom.poeApiKeyInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          persistCloudflareConfigFromInputs(true);
+          persistPoeConfigFromInputs(true);
         }
       });
     }
 
-    if (dom.cloudflareAccountIdInput) {
-      dom.cloudflareAccountIdInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          if (dom.cloudflareApiTokenInput) dom.cloudflareApiTokenInput.focus();
-        }
-      });
-    }
-
-    if (dom.cloudflareApiTokenInput) {
-      dom.cloudflareApiTokenInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          const accountId = dom.cloudflareAccountIdInput ? dom.cloudflareAccountIdInput.value.trim() : '';
-          const token = dom.cloudflareApiTokenInput.value.trim();
-          state.settings.cloudflareAccountId = accountId;
-          state.settings.cloudflareApiToken = token;
-          saveSettings();
-          updateCloudflareStatusBadge();
-          showToast(accountId && token ? 'Configuración de Cloudflare guardada' : 'Configuración de Cloudflare actualizada');
-        }
-      });
-    }
-
-    if (dom.toggleCloudflareTokenVisibilityBtn && dom.cloudflareApiTokenInput) {
-      dom.toggleCloudflareTokenVisibilityBtn.addEventListener('click', function () {
-        const isPassword = dom.cloudflareApiTokenInput.type === 'password';
-        dom.cloudflareApiTokenInput.type = isPassword ? 'text' : 'password';
-        if (dom.eyeIconCloudflareShow && dom.eyeIconCloudflareHide) {
+    if (dom.togglePoeKeyVisibilityBtn && dom.poeApiKeyInput) {
+      dom.togglePoeKeyVisibilityBtn.addEventListener('click', function () {
+        const isPassword = dom.poeApiKeyInput.type === 'password';
+        dom.poeApiKeyInput.type = isPassword ? 'text' : 'password';
+        if (dom.eyeIconPoeShow && dom.eyeIconPoeHide) {
           if (isPassword) {
-            dom.eyeIconCloudflareShow.classList.add('hidden');
-            dom.eyeIconCloudflareHide.classList.remove('hidden');
+            dom.eyeIconPoeShow.classList.add('hidden');
+            dom.eyeIconPoeHide.classList.remove('hidden');
           } else {
-            dom.eyeIconCloudflareShow.classList.remove('hidden');
-            dom.eyeIconCloudflareHide.classList.add('hidden');
+            dom.eyeIconPoeShow.classList.remove('hidden');
+            dom.eyeIconPoeHide.classList.add('hidden');
           }
         }
       });
