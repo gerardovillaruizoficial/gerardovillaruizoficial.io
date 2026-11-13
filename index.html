@@ -355,12 +355,12 @@
           <div class="setting-item">
             <div class="setting-text">
               <span class="setting-label">Poe API Key (Opcional)</span>
-              <span class="setting-desc">La clave predeterminada se ejecuta protegida en el servidor. Solo ingresa una sk-poe-... si deseas sobrescribirla.</span>
+              <span class="setting-desc">Para proteger la clave fuera del navegador en GitHub Pages usa una URL de Proxy Worker abajo; o pega una sk-poe-... personal aquí.</span>
             </div>
           </div>
           <div class="api-key-input-row">
             <div class="api-key-input-wrapper">
-              <input type="password" id="poeApiKeyInput" class="api-key-input" placeholder="Clave protegida activa en servidor (o pega sk-poe-...)" autocomplete="off" spellcheck="false">
+              <input type="password" id="poeApiKeyInput" class="api-key-input" placeholder="Clave protegida en servidor/Worker (o pega sk-poe-...)" autocomplete="off" spellcheck="false">
               <button type="button" id="togglePoeKeyVisibilityBtn" class="icon-button api-key-eye-btn" aria-label="Mostrar u ocultar clave">
                 <svg id="eyeIconPoeShow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -373,6 +373,11 @@
               </button>
             </div>
             <button type="button" id="savePoeConfigBtn" class="primary-btn api-save-btn">Guardar</button>
+          </div>
+          <div class="api-key-input-row">
+            <div class="api-key-input-wrapper">
+              <input type="url" id="poeProxyUrlInput" class="api-key-input" placeholder="Proxy Worker activo por defecto (o pega otra URL opcional)" autocomplete="off" spellcheck="false" style="padding-right: 12px;">
+            </div>
           </div>
           <div id="poeStatusNotice" class="api-key-status-notice"></div>
         </div>

@@ -145,6 +145,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       enableWebSearch: false,
       groqApiKey: '',
       poeApiKey: '',
+      poeProxyUrl: '',
       stripeTestSecretKey: '',
       stripeTestPaymentLink: '',
       lastVerifiedStripeSessionId: '',
@@ -154,6 +155,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     }
   };
 
+  const DEFAULT_POE_PROXY_URL = 'https://megacld-poe.villaruizgerardo0.workers.dev';
   const STORAGE_KEY_PENDING_STRIPE = 'megacld_pending_stripe_session';
   let stripePollTimer = null;
 
@@ -234,6 +236,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
     dom.apiKeyStatusNotice = document.getElementById('apiKeyStatusNotice');
     dom.poeApiKeyInput = document.getElementById('poeApiKeyInput');
+    dom.poeProxyUrlInput = document.getElementById('poeProxyUrlInput');
     dom.togglePoeKeyVisibilityBtn = document.getElementById('togglePoeKeyVisibilityBtn');
     dom.eyeIconPoeShow = document.getElementById('eyeIconPoeShow');
     dom.eyeIconPoeHide = document.getElementById('eyeIconPoeHide');
@@ -594,6 +597,9 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     }
     if (dom.poeApiKeyInput) {
       dom.poeApiKeyInput.value = state.settings.poeApiKey || '';
+    }
+    if (dom.poeProxyUrlInput) {
+      dom.poeProxyUrlInput.value = state.settings.poeProxyUrl || '';
     }
     if (dom.stripeTestSecretKeyInput) {
       dom.stripeTestSecretKeyInput.value = state.settings.stripeTestSecretKey || '';
@@ -2190,7 +2196,15 @@ La información está lista para procesarse. ¿Qué tarea te gustaría que reali
         return `![${safeAlt}](${imageResultUrl})`;
       } catch (err) {
         if (err && err.code === 'BACKEND_REQUIRED') {
-          return `Para usar la clave predeterminada de **Poe API** (**flux-2-flash**) sin exponerla en el navegador, abre la app usando **\`node server.js\`** (con \`POE_API_KEY\` en \`.env\`) o despliégala en **Netlify Functions** (\`/.netlify/functions/poe-image\` con \`POE_API_KEY\`).
+          if (isGitHubPagesOrigin()) {
+            return `**GitHub Pages** es un hosting 100% estático (sin servidor), por lo que no puede guardar \`POE_API_KEY\` en secreto sin exponerla al navegador.
+
+Para usar **flux-2-flash** en GitHub Pages sin mostrar la clave en JavaScript tienes 3 opciones:
+- Crea un **Cloudflare Worker** gratuito con \`POE_API_KEY\` guardada como *Secret* y pega su URL (\`https://tu-worker.workers.dev\`) en **Configuración ⚙️ > URL de Proxy Worker/Netlify** (o en \`DEFAULT_POE_PROXY_URL\` en \`app.js\`).
+- Conecta este mismo repositorio a **Netlify** con \`POE_API_KEY\` en *Environment variables* (usa \`/.netlify/functions/poe-image\` ya incluido).
+- Pega temporalmente tu clave \`sk-poe-...\` en **Configuración ⚙️ > API de Imagen (Poe API / Flux-2-Flash)** para llamadas directas desde tu navegador.`;
+          }
+          return `Para usar la clave predeterminada de **Poe API** (**flux-2-flash**) sin exponerla en el navegador, abre la app usando **\`node server.js\`** (con \`POE_API_KEY\` en \`.env\`), despliégala en **Netlify Functions** (\`/.netlify/functions/poe-image\`), o pega una **URL de Proxy Worker** en **Configuración ⚙️**.
 
 También puedes pegar una clave personal temporal en **Configuración ⚙️ > API de Imagen (Poe API / Flux-2-Flash)** si estás previsualizando sin servidor.`;
         }
@@ -2349,9 +2363,32 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
   }
 
+  function isGitHubPagesOrigin() {
+    if (typeof window === 'undefined' || !window.location) return false;
+    const host = (window.location.hostname || '').toLowerCase();
+    return host.endsWith('.github.io') || host === 'github.io';
+  }
+
+  function normalizePoeProxyUrl(rawUrl) {
+    const trimmed = (rawUrl || '').trim().replace(/\/+$/, '');
+    if (!trimmed) return '';
+    if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith('/')) {
+      return 'https://' + trimmed;
+    }
+    return trimmed;
+  }
+
+  function getActivePoeProxyUrl() {
+    const savedUrl = state && state.settings ? state.settings.poeProxyUrl : '';
+    const defaultUrl = typeof DEFAULT_POE_PROXY_URL === 'string' ? DEFAULT_POE_PROXY_URL : '';
+    return normalizePoeProxyUrl(savedUrl || defaultUrl);
+  }
+
   function updatePoeStatusBadge() {
     if (!dom.poeStatusNotice) return;
     const customKey = (state.settings.poeApiKey || '').trim();
+    const proxyUrl = getActivePoeProxyUrl();
+    const isGhPages = isGitHubPagesOrigin();
 
     if (customKey) {
       dom.poeStatusNotice.className = 'api-key-status-notice success';
@@ -2359,11 +2396,25 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       return;
     }
 
-    dom.poeStatusNotice.className = 'api-key-status-notice info';
-    dom.poeStatusNotice.textContent = 'Usando clave predeterminada protegida en servidor cuando server.js o Netlify Functions esté activo (flux-2-flash).';
+    if (isGhPages && !proxyUrl) {
+      dom.poeStatusNotice.className = 'api-key-status-notice warning';
+      dom.poeStatusNotice.textContent = 'GitHub Pages es estático: pega la URL de tu Proxy Worker con POE_API_KEY oculta o ingresa tu sk-poe-... arriba.';
+      return;
+    }
 
-    if (typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
-      const statusEndpoints = ['/api/poe/status', '/.netlify/functions/poe-image'];
+    dom.poeStatusNotice.className = 'api-key-status-notice info';
+    dom.poeStatusNotice.textContent = proxyUrl
+      ? 'Proxy Poe configurado: conectando con ' + proxyUrl + ' (flux-2-flash).'
+      : 'Usando clave predeterminada protegida en servidor cuando server.js o Netlify Functions esté activo (flux-2-flash).';
+
+    const isHttpOrigin = typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http');
+    if (isHttpOrigin || /^https?:\/\//i.test(proxyUrl)) {
+      const statusEndpoints = [];
+      if (isHttpOrigin ? proxyUrl : /^https?:\/\//i.test(proxyUrl)) statusEndpoints.push(proxyUrl);
+      if (isHttpOrigin && !isGhPages) {
+        statusEndpoints.push('/api/poe/status');
+        statusEndpoints.push('/.netlify/functions/poe-image');
+      }
       (async function () {
         for (let i = 0; i < statusEndpoints.length; i++) {
           try {
@@ -2374,10 +2425,10 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
             if (data && data.serverActive && dom.poeStatusNotice && !(state.settings.poeApiKey || '').trim()) {
               if (data.envConfigured) {
                 dom.poeStatusNotice.className = 'api-key-status-notice success';
-                dom.poeStatusNotice.textContent = 'Poe API activa por defecto desde el servidor (.env / flux-2-flash; clave oculta en navegadores).';
+                dom.poeStatusNotice.textContent = 'Poe API activa por defecto desde servidor/Worker (flux-2-flash; clave oculta en navegadores).';
               } else {
                 dom.poeStatusNotice.className = 'api-key-status-notice warning';
-                dom.poeStatusNotice.textContent = 'Servidor activo sin POE_API_KEY en el entorno. Agrégala en .env/Netlify o pega una sk-poe-... arriba.';
+                dom.poeStatusNotice.textContent = 'Servidor activo sin POE_API_KEY en el entorno. Agrégala en .env, Netlify o Worker Secrets.';
               }
             }
             return;
@@ -2427,11 +2478,24 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 
   async function generatePoeImage(prompt, modelName) {
     const customKey = (state.settings.poeApiKey || '').trim();
+    const configuredProxyUrl = getActivePoeProxyUrl();
+    const isGhPages = isGitHubPagesOrigin();
     const isHttpOrigin = typeof window !== 'undefined' &&
       window.location &&
       (window.location.protocol === 'http:' || window.location.protocol === 'https:');
 
-    if (isHttpOrigin) {
+    const proxyEndpoints = [];
+    if (configuredProxyUrl) {
+      proxyEndpoints.push(configuredProxyUrl);
+    }
+    if (isHttpOrigin && !isGhPages) {
+      proxyEndpoints.push('/api/poe/image');
+      proxyEndpoints.push('/.netlify/functions/poe-image');
+    }
+
+    let customProxyNetworkError = '';
+
+    if (proxyEndpoints.length > 0) {
       const proxyPayloadObj = {
         prompt: prompt,
         modelName: modelName || 'flux-2-flash'
@@ -2440,7 +2504,6 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
         proxyPayloadObj.apiKey = customKey;
       }
       const proxyPayload = JSON.stringify(proxyPayloadObj);
-      const proxyEndpoints = ['/api/poe/image', '/.netlify/functions/poe-image'];
 
       for (let i = 0; i < proxyEndpoints.length; i++) {
         const proxyUrl = proxyEndpoints[i];
@@ -2452,6 +2515,9 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
             body: proxyPayload
           });
         } catch (networkErr) {
+          if (configuredProxyUrl && proxyUrl === configuredProxyUrl) {
+            customProxyNetworkError = 'No se pudo conectar con la URL de Proxy Poe configurada (' + (networkErr && networkErr.message ? networkErr.message : 'error de red') + ').';
+          }
           continue;
         }
 
@@ -2488,6 +2554,10 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
         }
         return imageUrl;
       }
+    }
+
+    if (customProxyNetworkError && !customKey) {
+      throw new Error(customProxyNetworkError);
     }
 
     if (!customKey) {
@@ -3400,17 +3470,34 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 
     function persistPoeConfigFromInputs(showMessage) {
       const apiKey = dom.poeApiKeyInput ? dom.poeApiKeyInput.value.trim() : '';
+      const proxyUrl = dom.poeProxyUrlInput ? normalizePoeProxyUrl(dom.poeProxyUrlInput.value) : '';
       state.settings.poeApiKey = apiKey;
+      state.settings.poeProxyUrl = proxyUrl;
+      if (dom.poeProxyUrlInput && dom.poeProxyUrlInput.value !== proxyUrl) {
+        dom.poeProxyUrlInput.value = proxyUrl;
+      }
       saveSettings();
       updatePoeStatusBadge();
       if (showMessage) {
-        showToast(apiKey ? 'Clave personalizada de Poe API guardada' : 'Usando clave predeterminada de Poe API en servidor');
+        showToast(apiKey ? 'Clave personalizada de Poe API guardada' : (proxyUrl ? 'Proxy Poe guardado' : 'Configuración de Poe API actualizada'));
       }
     }
 
     if (dom.savePoeConfigBtn) {
       dom.savePoeConfigBtn.addEventListener('click', function () {
         persistPoeConfigFromInputs(true);
+      });
+    }
+
+    if (dom.poeProxyUrlInput) {
+      dom.poeProxyUrlInput.addEventListener('change', function () {
+        persistPoeConfigFromInputs(false);
+      });
+      dom.poeProxyUrlInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          persistPoeConfigFromInputs(true);
+        }
       });
     }
 
