@@ -146,6 +146,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       groqApiKey: '',
       cloudflareAccountId: '',
       cloudflareApiToken: '',
+      cloudflareWorkerUrl: '',
       stripeTestSecretKey: '',
       stripeTestPaymentLink: '',
       lastVerifiedStripeSessionId: '',
@@ -236,6 +237,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.apiKeyStatusNotice = document.getElementById('apiKeyStatusNotice');
     dom.cloudflareAccountIdInput = document.getElementById('cloudflareAccountIdInput');
     dom.cloudflareApiTokenInput = document.getElementById('cloudflareApiTokenInput');
+    dom.cloudflareWorkerUrlInput = document.getElementById('cloudflareWorkerUrlInput');
     dom.toggleCloudflareTokenVisibilityBtn = document.getElementById('toggleCloudflareTokenVisibilityBtn');
     dom.eyeIconCloudflareShow = document.getElementById('eyeIconCloudflareShow');
     dom.eyeIconCloudflareHide = document.getElementById('eyeIconCloudflareHide');
@@ -599,6 +601,9 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     }
     if (dom.cloudflareApiTokenInput) {
       dom.cloudflareApiTokenInput.value = state.settings.cloudflareApiToken || '';
+    }
+    if (dom.cloudflareWorkerUrlInput) {
+      dom.cloudflareWorkerUrlInput.value = state.settings.cloudflareWorkerUrl || '';
     }
     if (dom.stripeTestSecretKeyInput) {
       dom.stripeTestSecretKeyInput.value = state.settings.stripeTestSecretKey || '';
@@ -2206,6 +2211,14 @@ La información está lista para procesarse. ¿Qué tarea te gustaría que reali
         const dataUrl = await generateCloudflareImage(cleanPrompt, currentModel);
         return `![${safeAlt}](${dataUrl})`;
       } catch (err) {
+        if (err && err.code === 'CORS_BLOCKED') {
+          return `El navegador bloqueó la petición directa a \`api.cloudflare.com\` por política **CORS** (Cloudflare no permite llamadas directas con \`Authorization\` desde el navegador sin proxy).
+
+Para generarlo de verdad tienes 3 opciones:
+- Ejecuta el servidor local (\`node server.js\`) que incluye \`/api/cloudflare/image\`.
+- Despliega la app en **Netlify** (usando Git o Netlify CLI para activar \`netlify/functions/cloudflare-image.js\`).
+- Crea un pequeño **Cloudflare Worker Proxy** con CORS y pega su URL en **Configuración** ⚙️ (*URL de Proxy Worker CORS*).`;
+        }
         return `No se pudo completar la generación en Cloudflare Workers AI (**${escapeHtml(err.message)}**).
 
 Verifica en **Configuración** ⚙️ que tu **Account ID** y **API Token** sean correctos y dispongan del permiso activo para Workers AI.`;
@@ -2373,12 +2386,116 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
   }
 
+  function normalizeCloudflareWorkerUrl(rawUrl) {
+    const trimmed = (rawUrl || '').trim().replace(/\/+$/, '');
+    if (!trimmed) return '';
+    if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith('/')) {
+      return 'https://' + trimmed;
+    }
+    return trimmed;
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onloadend = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(new Error('Error al decodificar la imagen de Cloudflare.')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function parseCloudflareImageResponse(response) {
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Cloudflare API Error (${response.status}): ${errText}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const json = await response.json();
+      if (json && json.error) {
+        throw new Error(json.error);
+      }
+      if (json && json.image) {
+        return json.image;
+      }
+      if (json && json.result && json.result.image) {
+        const imgData = json.result.image;
+        return imgData.startsWith('data:') ? imgData : 'data:image/png;base64,' + imgData;
+      }
+      throw new Error('Respuesta de Cloudflare sin imagen válida.');
+    }
+
+    const blob = await response.blob();
+    return blobToDataUrl(blob);
+  }
+
   async function generateCloudflareImage(prompt, modelName) {
     const accountId = (state.settings.cloudflareAccountId || '').trim();
     const apiToken = (state.settings.cloudflareApiToken || '').trim();
+    const customWorkerUrl = normalizeCloudflareWorkerUrl(state.settings.cloudflareWorkerUrl);
 
     if (!accountId || !apiToken) {
       throw new Error('NO_CLOUDFLARE_AUTH');
+    }
+
+    const isHttpOrigin = typeof window !== 'undefined' &&
+      window.location &&
+      (window.location.protocol === 'http:' || window.location.protocol === 'https:');
+
+    const proxyEndpoints = [];
+    if (customWorkerUrl) {
+      proxyEndpoints.push(customWorkerUrl);
+    }
+    if (isHttpOrigin) {
+      proxyEndpoints.push('/api/cloudflare/image');
+      proxyEndpoints.push('/.netlify/functions/cloudflare-image');
+    }
+
+    const proxyPayload = JSON.stringify({
+      accountId: accountId,
+      apiToken: apiToken,
+      prompt: prompt,
+      modelName: modelName || ''
+    });
+
+    let customProxyError = '';
+
+    for (let i = 0; i < proxyEndpoints.length; i++) {
+      const proxyUrl = proxyEndpoints[i];
+      let proxyResp;
+      try {
+        proxyResp = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: proxyPayload
+        });
+      } catch (networkErr) {
+        if (customWorkerUrl && proxyUrl === customWorkerUrl) {
+          customProxyError = 'No se pudo conectar con el Proxy Worker configurado (' + (networkErr && networkErr.message ? networkErr.message : 'error de red') + ').';
+        }
+        continue;
+      }
+
+      const contentType = proxyResp.headers.get('content-type') || '';
+
+      if (!proxyResp.ok) {
+        if (!contentType.includes('application/json')) {
+          continue;
+        }
+        const errData = await proxyResp.json().catch(function () { return null; });
+        const errMsg = errData && (errData.error || (Array.isArray(errData.errors) && errData.errors[0] && errData.errors[0].message));
+        if ((proxyResp.status === 404 || proxyResp.status === 405) && !(typeof errMsg === 'string' && errMsg.startsWith('Cloudflare API Error'))) {
+          continue;
+        }
+        throw new Error(errMsg || ('Error en proxy Cloudflare (' + proxyResp.status + ')'));
+      }
+
+      if (!contentType.includes('application/json') && !contentType.startsWith('image/')) {
+        continue;
+      }
+
+      return parseCloudflareImageResponse(proxyResp);
     }
 
     const isFlux2 = (modelName || '').toLowerCase().includes('flux.2');
@@ -2415,30 +2532,23 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       };
     }
 
-    const response = await fetch(endpoint, fetchOptions);
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Cloudflare API Error (${response.status}): ${errText}`);
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const json = await response.json();
-      if (json && json.result && json.result.image) {
-        const imgData = json.result.image;
-        return imgData.startsWith('data:') ? imgData : 'data:image/png;base64,' + imgData;
+    let response;
+    try {
+      response = await fetch(endpoint, fetchOptions);
+    } catch (directErr) {
+      if (customProxyError) {
+        throw new Error(customProxyError);
       }
-      throw new Error('Respuesta de Cloudflare sin imagen válida.');
+      const msg = (directErr && directErr.message ? directErr.message : '').toLowerCase();
+      if (directErr instanceof TypeError || msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) {
+        const corsErr = new Error('Bloqueo CORS del navegador al conectar directamente con api.cloudflare.com');
+        corsErr.code = 'CORS_BLOCKED';
+        throw corsErr;
+      }
+      throw directErr;
     }
 
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('Error al decodificar la imagen de Cloudflare.'));
-      reader.readAsDataURL(blob);
-    });
+    return parseCloudflareImageResponse(response);
   }
 
   async function streamGroqCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults = [], webMeta = null) {
@@ -3312,15 +3422,38 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       });
     }
 
+    function persistCloudflareConfigFromInputs(showMessage) {
+      const accountId = dom.cloudflareAccountIdInput ? dom.cloudflareAccountIdInput.value.trim() : '';
+      const token = dom.cloudflareApiTokenInput ? dom.cloudflareApiTokenInput.value.trim() : '';
+      const workerUrl = dom.cloudflareWorkerUrlInput ? normalizeCloudflareWorkerUrl(dom.cloudflareWorkerUrlInput.value) : '';
+      state.settings.cloudflareAccountId = accountId;
+      state.settings.cloudflareApiToken = token;
+      state.settings.cloudflareWorkerUrl = workerUrl;
+      if (dom.cloudflareWorkerUrlInput && dom.cloudflareWorkerUrlInput.value !== workerUrl) {
+        dom.cloudflareWorkerUrlInput.value = workerUrl;
+      }
+      saveSettings();
+      updateCloudflareStatusBadge();
+      if (showMessage) {
+        showToast(accountId && token ? 'Configuración de Cloudflare guardada' : 'Configuración de Cloudflare actualizada');
+      }
+    }
+
     if (dom.saveCloudflareConfigBtn) {
       dom.saveCloudflareConfigBtn.addEventListener('click', function () {
-        const accountId = dom.cloudflareAccountIdInput ? dom.cloudflareAccountIdInput.value.trim() : '';
-        const token = dom.cloudflareApiTokenInput ? dom.cloudflareApiTokenInput.value.trim() : '';
-        state.settings.cloudflareAccountId = accountId;
-        state.settings.cloudflareApiToken = token;
-        saveSettings();
-        updateCloudflareStatusBadge();
-        showToast(accountId && token ? 'Configuración de Cloudflare guardada' : 'Configuración de Cloudflare actualizada');
+        persistCloudflareConfigFromInputs(true);
+      });
+    }
+
+    if (dom.cloudflareWorkerUrlInput) {
+      dom.cloudflareWorkerUrlInput.addEventListener('change', function () {
+        persistCloudflareConfigFromInputs(false);
+      });
+      dom.cloudflareWorkerUrlInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          persistCloudflareConfigFromInputs(true);
+        }
       });
     }
 
