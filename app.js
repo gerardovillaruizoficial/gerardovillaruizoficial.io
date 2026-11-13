@@ -11,6 +11,8 @@
       const isFlux2 = lower.includes('flux.2');
       const modelDisplayName = isFlux2 ? 'Flux.2' : 'Flux';
       identityPrefix = `Eres ${modelDisplayName}, un modelo avanzado de generación visual desarrollado por Black Forest Labs (flux-2-flash) e integrado a través de Poe API. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${modelDisplayName} vía Poe API (ejemplo: "Soy ${modelDisplayName} en Poe API."). Responde siempre de forma educada, servicial y natural en español.`;
+    } else if (lower.includes('gpt 6 astra')) {
+      identityPrefix = `Eres ${model}, un modelo insignia de lenguaje e inteligencia artificial desarrollado por OpenAI. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${model} de OpenAI (ejemplo: "Soy ${model} de OpenAI."). NUNCA menciones a Mistral, Mistral Large, NVIDIA, Anthropic, Claude, Qwen ni Meta. Responde siempre de forma educada, servicial y natural en español.`;
     } else {
       identityPrefix = `Eres ${model}, un modelo de inteligencia artificial desarrollado por Anthropic. Si te preguntan quién eres, qué modelo eres o sobre tu identidad, responde siempre con naturalidad y exactitud diciendo que eres ${model} de Anthropic (ejemplo: "Soy ${model} de Anthropic."). NUNCA menciones a Qwen, OpenAI, Meta, Alibaba ni ningún modelo o creador técnico externo. Responde siempre de forma educada, servicial y natural en español.`;
     }
@@ -105,6 +107,10 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     ],
     'Claude Sonnet 4.6': [
       'Estructurando respuesta equilibrada entre velocidad y solidez técnica.'
+    ],
+    'GPT 6 Astra': [
+      'Activando motores de razonamiento profundo y síntesis estelar de OpenAI...',
+      'Contrastando inferencias multi-paso y validando coherencia estructural.'
     ]
   };
 
@@ -117,7 +123,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       name: 'Plan Gratuito',
       price: 0,
       basicImageLimit: 5,
-      allowedTextModels: ['claude sonnet 4.6', 'claude haiku 5.5']
+      allowedTextModels: ['claude sonnet 4.6', 'claude haiku 5.5', 'gpt 6 astra']
     },
     go: {
       id: 'go',
@@ -144,6 +150,8 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       enableThinking: true,
       enableWebSearch: false,
       groqApiKey: '',
+      nvidiaApiKey: '',
+      nvidiaProxyUrl: '',
       poeApiKey: '',
       poeProxyUrl: '',
       stripeTestSecretKey: '',
@@ -197,6 +205,8 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.effortSliderThumb = document.getElementById('effortSliderThumb');
     dom.toggleClaudeModelsBtn = document.getElementById('toggleClaudeModelsBtn');
     dom.claudeModelsContainer = document.getElementById('claudeModelsContainer');
+    dom.toggleOpenAiModelsBtn = document.getElementById('toggleOpenAiModelsBtn');
+    dom.openAiModelsContainer = document.getElementById('openAiModelsContainer');
     dom.toggleLegacyModelsBtn = document.getElementById('toggleLegacyModelsBtn');
     dom.legacyModelsList = document.getElementById('legacyModelsList');
     dom.legacyChevronIcon = document.getElementById('legacyChevronIcon');
@@ -235,6 +245,13 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     dom.eyeIconHide = document.getElementById('eyeIconHide');
     dom.saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
     dom.apiKeyStatusNotice = document.getElementById('apiKeyStatusNotice');
+    dom.nvidiaApiKeyInput = document.getElementById('nvidiaApiKeyInput');
+    dom.nvidiaProxyUrlInput = document.getElementById('nvidiaProxyUrlInput');
+    dom.toggleNvidiaKeyVisibilityBtn = document.getElementById('toggleNvidiaKeyVisibilityBtn');
+    dom.eyeIconNvidiaShow = document.getElementById('eyeIconNvidiaShow');
+    dom.eyeIconNvidiaHide = document.getElementById('eyeIconNvidiaHide');
+    dom.saveNvidiaConfigBtn = document.getElementById('saveNvidiaConfigBtn');
+    dom.nvidiaStatusNotice = document.getElementById('nvidiaStatusNotice');
     dom.poeApiKeyInput = document.getElementById('poeApiKeyInput');
     dom.poeProxyUrlInput = document.getElementById('poeProxyUrlInput');
     dom.togglePoeKeyVisibilityBtn = document.getElementById('togglePoeKeyVisibilityBtn');
@@ -368,6 +385,14 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       return text
         .replace(/(?:creado|desarrollado|entrenado)\s+por\s+(?:Anthropic|Qwen|Meta|Alibaba|OpenAI|Pollinations|Cloudflare)/gi, 'ejecutado en Poe API')
         .replace(/(?:un modelo de lenguaje|un asistente|una IA|un modelo)\s+(?:de\s+inteligencia\s+artificial\s+)?(?:creado|desarrollado)\s+por\s+(?:Anthropic|Qwen|Meta|Alibaba|OpenAI|Pollinations|Cloudflare)/gi, `${modelDisplayName} vía Poe API`);
+    }
+    if (lower.includes('gpt 6 astra')) {
+      return text
+        .replace(/mistralai\/mistral-large-4-1t-a52b/gi, 'GPT 6 Astra')
+        .replace(/\bMistral\s+Large(?:\s+\d+)?/gi, 'GPT 6 Astra')
+        .replace(/(?:creado|desarrollado|entrenado|impulsado)\s+por\s+(?:Mistral(?:\s+AI)?|NVIDIA|Anthropic|Qwen|Meta|Alibaba)/gi, 'desarrollado por OpenAI')
+        .replace(/(?:un modelo de lenguaje|un asistente|una IA|un modelo)\s+(?:de\s+inteligencia\s+artificial\s+)?(?:creado|desarrollado|entrenado)\s+por\s+(?:Mistral(?:\s+AI)?|NVIDIA|Anthropic|Qwen|Meta|Alibaba)/gi, 'GPT 6 Astra de OpenAI')
+        .replace(/\bMistral(?:\s+AI)?\b/gi, 'OpenAI');
     }
     return text
       .replace(/(?:creado|desarrollado|entrenado)\s+por\s+(?:OpenAI|Qwen|Meta|Alibaba)/gi, 'desarrollado por Anthropic')
@@ -595,6 +620,12 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       dom.groqApiKeyInput.value = state.settings.groqApiKey || '';
       updateApiKeyStatusBadge();
     }
+    if (dom.nvidiaApiKeyInput) {
+      dom.nvidiaApiKeyInput.value = state.settings.nvidiaApiKey || '';
+    }
+    if (dom.nvidiaProxyUrlInput) {
+      dom.nvidiaProxyUrlInput.value = state.settings.nvidiaProxyUrl || '';
+    }
     if (dom.poeApiKeyInput) {
       dom.poeApiKeyInput.value = state.settings.poeApiKey || '';
     }
@@ -607,6 +638,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
     if (dom.stripeTestPaymentLinkInput) {
       dom.stripeTestPaymentLinkInput.value = state.settings.stripeTestPaymentLink || '';
     }
+    updateNvidiaStatusBadge();
     updatePoeStatusBadge();
     updateStripeStatusBadge();
     ensureValidModelForPlan();
@@ -900,7 +932,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
 
   function getModelPlanRequirements(modelName) {
     const lower = (modelName || '').toLowerCase().trim();
-    if (lower === 'claude sonnet 4.6' || lower === 'claude haiku 5.5') {
+    if (lower === 'claude sonnet 4.6' || lower === 'claude haiku 5.5' || lower === 'gpt 6 astra') {
       return { allowedInFree: true, creditCost: 0, isBasicImage: false, priceNote: '' };
     }
     if (lower === 'flux' || lower === 'flux.2') {
@@ -1647,6 +1679,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
       }
     });
     updateApiKeyStatusBadge();
+    updateNvidiaStatusBadge();
     updatePoeStatusBadge();
     saveSettings();
   }
@@ -1844,7 +1877,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </div>
-          <div class="claude-thinking-body">${escapeHtml(filterThinkingContent(msg.thought))}</div>
+          <div class="claude-thinking-body">${escapeHtml(filterThinkingContent(msg.thought, msg.model))}</div>
         `;
         thinkingContainer.querySelector('.claude-thinking-header').onclick = function () {
           thinkingContainer.classList.toggle('expanded');
@@ -2175,6 +2208,15 @@ La información está lista para procesarse. ¿Qué tarea te gustaría que reali
         return identityResponses[Math.floor(Math.random() * identityResponses.length)];
       }
 
+      if (lowerModel.includes('gpt 6 astra')) {
+        const identityResponses = [
+          `Soy ${currentModel} de OpenAI. Cuento con arquitectura avanzada de razonamiento profundo y síntesis técnica de alta precisión. ¿En qué proyecto te puedo ayudar hoy?`,
+          `Soy ${currentModel}, un modelo insignia de lenguaje e inteligencia artificial desarrollado por OpenAI. ¿Qué consulta técnica o creativa quieres abordar?`,
+          `Soy ${currentModel} de OpenAI. Estoy listo para asistirte con programación, análisis complejo y razonamiento estructurado.`
+        ];
+        return identityResponses[Math.floor(Math.random() * identityResponses.length)];
+      }
+
       const identityResponses = [
         `Soy ${currentModel} de Anthropic. Estoy aquí para asistirte con razonamiento, programación y resolución de tareas complejas. ¿En qué puedo ayudarte hoy?`,
         `Soy ${currentModel}, un modelo de inteligencia artificial desarrollado por Anthropic. ¿En qué puedo colaborar contigo hoy?`,
@@ -2241,6 +2283,22 @@ Verifica que el servidor esté ejecutándose o revisa tu configuración de **Poe
     }
 
     if (groqError) {
+      if (lowerModel.includes('gpt 6 astra')) {
+        if (groqError === 'NVIDIA_WORKER_UPDATE_REQUIRED') {
+          return `Para ejecutar **${currentModel}** en **GitHub Pages** sin exponer la clave de **NVIDIA API** en el navegador, actualiza tu Cloudflare Worker (\`megacld-poe.villaruizgerardo0.workers.dev\`) para soportar la ruta \`/nvidia\` con la variable secreta \`NVIDIA_API_KEY\`, o pega tu nueva URL de Worker en **Configuración ⚙️ > API de OpenAI / GPT 6 Astra (NVIDIA)**.`;
+        }
+        if (groqError === 'BACKEND_REQUIRED' || groqError === 'NO_NVIDIA_AUTH') {
+          return `No se detectó una clave **NVIDIA_API_KEY** activa en el servidor o Worker para **${currentModel}**.
+
+Para activarlo manteniendo tu clave segura fuera del navegador:
+- En local: inicia el servidor con **\`node server.js\`** (con \`NVIDIA_API_KEY\` en \`.env\`).
+- En Netlify: configura \`NVIDIA_API_KEY\` en *Environment variables* para \`/.netlify/functions/nvidia-chat\`.
+- En GitHub Pages: usa tu **Cloudflare Worker** en la ruta \`/nvidia\` con \`NVIDIA_API_KEY\` guardada como *Secret*.`;
+        }
+        return `No se pudo obtener respuesta en vivo de **${currentModel}** desde NVIDIA API (**${escapeHtml(groqError)}**).
+
+Verifica que **\`node server.js\`**, Netlify Functions o tu **Proxy Worker (/nvidia)** estén activos y con la clave **NVIDIA_API_KEY** configurada.`;
+      }
       return `No se pudo obtener respuesta en vivo de **${currentModel}** desde Groq (**${escapeHtml(groqError)}**).
 
 Verifica en **Configuración** ⚙️ que tu **Groq API Key** (\`gsk_...\`) sea válida y cuente con saldo o cuota disponible.`;
@@ -2266,7 +2324,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 2. Ingresa tu clave de **Groq API Key** (\`gsk_...\`) y haz clic en **Guardar**.`;
   }
 
-  function filterThinkingContent(rawText) {
+  function filterThinkingContent(rawText, currentModel) {
     if (!rawText) return 'Pensando...';
 
     const rawLower = rawText.toLowerCase();
@@ -2301,6 +2359,10 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       .replace(/Desarrolla un desglose analítico[^\n\.]*\./gi, '')
       .replace(/Despliega el máximo nivel[^\n\.]*\./gi, '')
       .trim();
+
+    if (cleaned) {
+      cleaned = cleanIdentityLeakage(cleaned, currentModel);
+    }
 
     return cleaned || 'Pensando...';
   }
@@ -2369,7 +2431,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     return host.endsWith('.github.io') || host === 'github.io';
   }
 
-  function normalizePoeProxyUrl(rawUrl) {
+  function normalizeProxyUrl(rawUrl) {
     const trimmed = (rawUrl || '').trim().replace(/\/+$/, '');
     if (!trimmed) return '';
     if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith('/')) {
@@ -2381,7 +2443,87 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
   function getActivePoeProxyUrl() {
     const savedUrl = state && state.settings ? state.settings.poeProxyUrl : '';
     const defaultUrl = typeof DEFAULT_POE_PROXY_URL === 'string' ? DEFAULT_POE_PROXY_URL : '';
-    return normalizePoeProxyUrl(savedUrl || defaultUrl);
+    return normalizeProxyUrl(savedUrl || defaultUrl);
+  }
+
+  function getActiveNvidiaCustomProxyUrl() {
+    const savedUrl = state && state.settings ? state.settings.nvidiaProxyUrl : '';
+    return normalizeProxyUrl(savedUrl);
+  }
+
+  function updateNvidiaStatusBadge() {
+    if (!dom.nvidiaStatusNotice) return;
+    const customKey = (state.settings.nvidiaApiKey || '').trim();
+    const customProxyUrl = getActiveNvidiaCustomProxyUrl();
+    const unifiedWorkerUrl = getActivePoeProxyUrl();
+    const isGhPages = isGitHubPagesOrigin();
+    const isHttpOrigin = typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http');
+
+    if (customKey) {
+      dom.nvidiaStatusNotice.className = 'api-key-status-notice success';
+      dom.nvidiaStatusNotice.textContent = 'Clave personalizada de NVIDIA guardada para GPT 6 Astra (se enviará por el proxy).';
+      return;
+    }
+
+    if (customProxyUrl) {
+      dom.nvidiaStatusNotice.className = 'api-key-status-notice info';
+      dom.nvidiaStatusNotice.textContent = 'Proxy NVIDIA configurado: conectando con ' + customProxyUrl + ' (GPT 6 Astra).';
+    } else if (isGhPages && !unifiedWorkerUrl) {
+      dom.nvidiaStatusNotice.className = 'api-key-status-notice warning';
+      dom.nvidiaStatusNotice.textContent = 'En GitHub Pages, configura una URL de Proxy Worker con ruta /nvidia y Secret NVIDIA_API_KEY.';
+      return;
+    } else {
+      dom.nvidiaStatusNotice.className = 'api-key-status-notice info';
+      dom.nvidiaStatusNotice.textContent = 'GPT 6 Astra usa NVIDIA API (Mistral Large 4) oculta en servidor/Netlify/Worker (/api/nvidia/chat o /nvidia).';
+    }
+
+    const statusCandidates = [];
+    if (customProxyUrl) {
+      statusCandidates.push({ url: customProxyUrl.endsWith('/nvidia') ? customProxyUrl + '/status' : customProxyUrl, kind: 'custom' });
+    }
+    if (isHttpOrigin && !isGhPages) {
+      statusCandidates.push({ url: '/api/nvidia/status', kind: 'local' });
+      statusCandidates.push({ url: '/.netlify/functions/nvidia-chat', kind: 'netlify' });
+    }
+    if (unifiedWorkerUrl) {
+      statusCandidates.push({ url: unifiedWorkerUrl + '/nvidia/status', kind: 'worker' });
+      statusCandidates.push({ url: unifiedWorkerUrl, kind: 'worker-root' });
+    }
+
+    if (statusCandidates.length === 0) return;
+
+    (async function () {
+      let sawOldPoeWorker = false;
+      for (let i = 0; i < statusCandidates.length; i++) {
+        const candidate = statusCandidates[i];
+        try {
+          const r = await fetch(candidate.url);
+          const ct = r.headers.get('content-type') || '';
+          if (!r.ok || !ct.includes('application/json')) continue;
+          const data = await r.json();
+          if (!dom.nvidiaStatusNotice || (state.settings.nvidiaApiKey || '').trim()) return;
+          const isNvidiaEnabled = data && (data.nvidiaConfigured === true || (candidate.kind !== 'worker-root' && data.envConfigured === true));
+          const isNvidiaServerOnly = data && (data.nvidiaServerActive === true || (candidate.kind !== 'worker-root' && data.serverActive === true));
+          if (isNvidiaEnabled) {
+            dom.nvidiaStatusNotice.className = 'api-key-status-notice success';
+            dom.nvidiaStatusNotice.textContent = 'GPT 6 Astra activo por defecto vía NVIDIA API (clave protegida fuera del navegador).';
+            return;
+          }
+          if (isNvidiaServerOnly) {
+            dom.nvidiaStatusNotice.className = 'api-key-status-notice warning';
+            dom.nvidiaStatusNotice.textContent = 'Proxy NVIDIA activo sin NVIDIA_API_KEY en el entorno (.env, Netlify o Worker Secrets).';
+            return;
+          }
+          if (candidate.kind === 'worker-root' && data && data.serverActive && data.nvidiaConfigured === undefined) {
+            sawOldPoeWorker = true;
+          }
+        } catch (e) {}
+      }
+      if (sawOldPoeWorker && dom.nvidiaStatusNotice && !(state.settings.nvidiaApiKey || '').trim()) {
+        dom.nvidiaStatusNotice.className = 'api-key-status-notice warning';
+        dom.nvidiaStatusNotice.textContent = 'Tu Worker actual en GitHub Pages solo tiene Poe API. Actualízalo con la ruta /nvidia y Secret NVIDIA_API_KEY para activar GPT 6 Astra.';
+      }
+    })();
   }
 
   function updatePoeStatusBadge() {
@@ -2597,13 +2739,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     return directUrl;
   }
 
-  async function streamGroqCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults = [], webMeta = null) {
-    const apiKey = (state.settings.groqApiKey || '').trim();
-    if (!apiKey) {
-      throw new Error('NO_API_KEY');
-    }
-
-    const targetModel = getGroqModelForSelected(selectedModel);
+  function buildConversationMessages(messages, selectedModel, webResults = [], webMeta = null) {
     const effortKey = state.settings.effortLevel || 'bajo';
     let effortPrompt = getSystemPrompt(selectedModel, effortKey);
     const hasWebResults = Array.isArray(webResults) && webResults.length > 0;
@@ -2635,13 +2771,92 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       };
     });
 
-    const formattedMessages = [
+    return [
       {
         role: 'system',
         content: effortPrompt
       },
       ...mappedMessages
     ];
+  }
+
+  function processSseLine(line, onReasoningChunk, onContentChunk) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data:')) return false;
+    const jsonStr = trimmed.slice(5).trim();
+    if (jsonStr === '[DONE]') return true;
+
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const choice = parsed.choices && parsed.choices[0];
+      const delta = (choice && (choice.delta || choice.message)) || null;
+      if (!delta) return false;
+
+      const reasoningChunk = delta.reasoning_content || delta.reasoning || '';
+      if (reasoningChunk) {
+        onReasoningChunk(reasoningChunk);
+      }
+
+      const contentChunk = delta.content || '';
+      if (contentChunk) {
+        onContentChunk(contentChunk);
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  async function readOpenAISseStream(response, onReasoningChunk, onContentChunk) {
+    if (!response.body || typeof response.body.getReader !== 'function') {
+      const json = await response.json();
+      const choice = json && json.choices && json.choices[0];
+      const msg = choice && choice.message;
+      if (msg && (msg.reasoning_content || msg.reasoning)) {
+        onReasoningChunk(msg.reasoning_content || msg.reasoning);
+      }
+      if (msg && msg.content) {
+        onContentChunk(msg.content);
+      }
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      if (state.abortController) {
+        try { reader.cancel(); } catch (e) {}
+        break;
+      }
+
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (processSseLine(line, onReasoningChunk, onContentChunk)) {
+          return;
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      processSseLine(buffer, onReasoningChunk, onContentChunk);
+    }
+  }
+
+  async function streamGroqCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults = [], webMeta = null) {
+    const apiKey = (state.settings.groqApiKey || '').trim();
+    if (!apiKey) {
+      throw new Error('NO_API_KEY');
+    }
+
+    const targetModel = getGroqModelForSelected(selectedModel);
+    const effortKey = state.settings.effortLevel || 'bajo';
+    const formattedMessages = buildConversationMessages(messages, selectedModel, webResults, webMeta);
 
     const groqEffortMap = {
       bajo: 'low',
@@ -2705,46 +2920,135 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       throw new Error('Groq API Error (' + response.status + '): ' + errText);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let buffer = '';
+    await readOpenAISseStream(response, onReasoningChunk, onContentChunk);
+  }
 
-    while (true) {
-      if (state.abortController) {
-        try { reader.cancel(); } catch (e) {}
-        break;
-      }
+  async function streamNvidiaCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults = [], webMeta = null) {
+    const customKey = (state.settings.nvidiaApiKey || '').trim();
+    const customNvidiaProxy = getActiveNvidiaCustomProxyUrl();
+    const unifiedWorkerBase = getActivePoeProxyUrl();
+    const isGhPages = isGitHubPagesOrigin();
+    const isHttpOrigin = typeof window !== 'undefined' &&
+      window.location &&
+      (window.location.protocol === 'http:' || window.location.protocol === 'https:');
 
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-        const jsonStr = trimmed.slice(5).trim();
-        if (jsonStr === '[DONE]') return;
-
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
-          if (!delta) continue;
-
-          const reasoningChunk = delta.reasoning_content || delta.reasoning || '';
-          if (reasoningChunk) {
-            onReasoningChunk(reasoningChunk);
-          }
-
-          const contentChunk = delta.content || '';
-          if (contentChunk) {
-            onContentChunk(contentChunk);
-          }
-        } catch (e) {}
-      }
+    const formattedMessages = buildConversationMessages(messages, selectedModel, webResults, webMeta);
+    const requestPayload = {
+      messages: formattedMessages,
+      temperature: 0.6,
+      top_p: 0.95,
+      max_tokens: 4096,
+      stream: true
+    };
+    if (customKey) {
+      requestPayload.apiKey = customKey;
     }
+
+    const proxyCandidates = [];
+    if (customNvidiaProxy) {
+      proxyCandidates.push(customNvidiaProxy);
+    }
+    if (isHttpOrigin && !isGhPages) {
+      proxyCandidates.push('/api/nvidia/chat');
+      proxyCandidates.push('/.netlify/functions/nvidia-chat');
+    }
+    if (unifiedWorkerBase) {
+      proxyCandidates.push(unifiedWorkerBase.endsWith('/nvidia') ? unifiedWorkerBase : unifiedWorkerBase + '/nvidia');
+    }
+
+    if (proxyCandidates.length === 0) {
+      const err = new Error('BACKEND_REQUIRED');
+      err.code = 'BACKEND_REQUIRED';
+      throw err;
+    }
+
+    let sawOldPoeWorker = false;
+    let customProxyNetworkError = '';
+
+    for (let i = 0; i < proxyCandidates.length; i++) {
+      const endpoint = proxyCandidates[i];
+      const payloadToSend = Object.assign({}, requestPayload);
+      if (endpoint.includes('/.netlify/functions/nvidia-chat')) {
+        payloadToSend.stream = false;
+      }
+
+      let resp;
+      try {
+        resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloadToSend)
+        });
+      } catch (networkErr) {
+        if (customNvidiaProxy && endpoint === customNvidiaProxy) {
+          customProxyNetworkError = 'No se pudo conectar con la URL de Proxy NVIDIA configurada (' + (networkErr && networkErr.message ? networkErr.message : 'error de red') + ').';
+        }
+        continue;
+      }
+
+      const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+
+      if (!resp.ok) {
+        if (!contentType.includes('application/json')) {
+          continue;
+        }
+        const errData = await resp.json().catch(function () { return null; });
+        const errMsg = errData && (errData.error || (errData.detail && String(errData.detail)));
+        if (errMsg === 'NO_NVIDIA_AUTH') {
+          const authErr = new Error('NO_NVIDIA_AUTH');
+          authErr.code = 'NO_NVIDIA_AUTH';
+          throw authErr;
+        }
+        if (typeof errMsg === 'string' && /falta el prompt/i.test(errMsg)) {
+          sawOldPoeWorker = true;
+          continue;
+        }
+        if ((resp.status === 404 || resp.status === 405) && !(typeof errMsg === 'string' && errMsg.startsWith('NVIDIA API Error'))) {
+          continue;
+        }
+        throw new Error(errMsg || ('Error en NVIDIA API (' + resp.status + ')'));
+      }
+
+      if (contentType.includes('text/event-stream')) {
+        await readOpenAISseStream(resp, onReasoningChunk, onContentChunk);
+        return;
+      }
+
+      if (!contentType.includes('application/json')) {
+        continue;
+      }
+
+      const json = await resp.json();
+      if (json && json.error) {
+        throw new Error(typeof json.error === 'string' ? json.error : (json.error.message || 'Error en NVIDIA API'));
+      }
+      const choice = json && json.choices && json.choices[0];
+      const msg = choice && choice.message;
+      const reasoning = (msg && (msg.reasoning_content || msg.reasoning)) || '';
+      if (reasoning) {
+        onReasoningChunk(reasoning);
+      }
+      const content = (msg && msg.content) || '';
+      if (content) {
+        onContentChunk(content);
+      }
+      if (!reasoning && !content) {
+        throw new Error('NVIDIA API devolvió una respuesta vacía para GPT 6 Astra.');
+      }
+      return;
+    }
+
+    if (customProxyNetworkError) {
+      throw new Error(customProxyNetworkError);
+    }
+    if (sawOldPoeWorker) {
+      const workerErr = new Error('NVIDIA_WORKER_UPDATE_REQUIRED');
+      workerErr.code = 'NVIDIA_WORKER_UPDATE_REQUIRED';
+      throw workerErr;
+    }
+    const backendErr = new Error('BACKEND_REQUIRED');
+    backendErr.code = 'BACKEND_REQUIRED';
+    throw backendErr;
   }
 
   function setGenerationUI(isGenerating) {
@@ -2836,6 +3140,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     const lowerCurrentModel = currentModel.toLowerCase();
     const isImageModel = lowerCurrentModel.includes('gpt image') || lowerCurrentModel.includes('flux');
     const isVideoModel = lowerCurrentModel.includes('video');
+    const isNvidiaTextModel = lowerCurrentModel.includes('gpt 6 astra');
 
     let thinkingContainer = null;
     let thinkingStatusSpan = null;
@@ -2925,35 +3230,39 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       }
     }
 
-    if (hasGroqKey && !isImageModel && !isVideoModel) {
+    if ((isNvidiaTextModel || hasGroqKey) && !isImageModel && !isVideoModel) {
+      const handleReasoningChunk = function (chunk) {
+        thoughtText += chunk;
+        if (thinkingBodyDiv) {
+          thinkingBodyDiv.textContent = filterThinkingContent(thoughtText, currentModel);
+        }
+      };
+      const handleContentChunk = function (chunk) {
+        if (phraseInterval) {
+          clearInterval(phraseInterval);
+          phraseInterval = null;
+        }
+        if (thinkingContainer) {
+          const sparkIcon = thinkingContainer.querySelector('.claude-spark-icon');
+          if (sparkIcon) sparkIcon.classList.remove('animating');
+          if (!thoughtStatusFinal) {
+            const elapsedSec = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+            thoughtStatusFinal = 'Pensó durante ' + elapsedSec + ' segundos';
+            if (thinkingStatusSpan) thinkingStatusSpan.textContent = thoughtStatusFinal;
+          }
+        }
+        accumulatedText += chunk;
+        contentDiv.innerHTML = renderMarkdown(accumulatedText) + '<span class=cursor-blink></span>';
+        scrollToBottom();
+      };
+
       try {
-        await streamGroqCompletion(
+        const streamFn = isNvidiaTextModel ? streamNvidiaCompletion : streamGroqCompletion;
+        await streamFn(
           activeChat.messages,
           currentModel,
-          function onReasoning(chunk) {
-            thoughtText += chunk;
-            if (thinkingBodyDiv) {
-              thinkingBodyDiv.textContent = filterThinkingContent(thoughtText);
-            }
-          },
-          function onContent(chunk) {
-            if (phraseInterval) {
-              clearInterval(phraseInterval);
-              phraseInterval = null;
-            }
-            if (thinkingContainer) {
-              const sparkIcon = thinkingContainer.querySelector('.claude-spark-icon');
-              if (sparkIcon) sparkIcon.classList.remove('animating');
-              if (!thoughtStatusFinal) {
-                const elapsedSec = Math.max(1, Math.round((Date.now() - startTime) / 1000));
-                thoughtStatusFinal = 'Pensó durante ' + elapsedSec + ' segundos';
-                if (thinkingStatusSpan) thinkingStatusSpan.textContent = thoughtStatusFinal;
-              }
-            }
-            accumulatedText += chunk;
-            contentDiv.innerHTML = renderMarkdown(accumulatedText) + '<span class=cursor-blink></span>';
-            scrollToBottom();
-          },
+          handleReasoningChunk,
+          handleContentChunk,
           webResults,
           { attempted: attemptedWebSearch, query: webSearchQuery }
         );
@@ -2963,8 +3272,8 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
           clearInterval(phraseInterval);
           phraseInterval = null;
         }
-        groqErrorMessage = err.message || String(err);
-        showToast('Error con Groq API: ' + groqErrorMessage);
+        groqErrorMessage = (err && err.code) || (err && err.message) || String(err);
+        showToast((isNvidiaTextModel ? 'Error con NVIDIA API: ' : 'Error con Groq API: ') + groqErrorMessage);
       }
     }
 
@@ -2972,7 +3281,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       if (!isImageModel && state.settings.enableThinking) {
         thoughtText = getThoughtProcess(currentModel);
         if (thinkingBodyDiv) {
-          thinkingBodyDiv.textContent = filterThinkingContent(thoughtText);
+          thinkingBodyDiv.textContent = filterThinkingContent(thoughtText, currentModel);
         }
 
         const thinkingDuration = currentModel.includes('Opus') ? 2400 : 1600;
@@ -3076,7 +3385,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       id: generateId(),
       role: 'assistant',
       model: currentModel,
-      thought: !isImageModel && state.settings.enableThinking ? filterThinkingContent(thoughtText) : null,
+      thought: !isImageModel && state.settings.enableThinking ? filterThinkingContent(thoughtText, currentModel) : null,
       thoughtStatus: !isImageModel && state.settings.enableThinking ? thoughtStatusFinal : null,
       content: accumulatedText,
       mediaPrompt: generatedMediaPrompt || null,
@@ -3396,14 +3705,30 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       });
     }
 
-    if (dom.toggleClaudeModelsBtn) {
-      dom.toggleClaudeModelsBtn.addEventListener('click', function () {
+    function bindCollapsibleSection(toggleBtn, container) {
+      if (!toggleBtn) return;
+      toggleBtn.addEventListener('click', function () {
         this.classList.toggle('collapsed');
-        if (dom.claudeModelsContainer) {
-          dom.claudeModelsContainer.classList.toggle('collapsed');
+        if (container) {
+          container.classList.toggle('collapsed');
         }
       });
     }
+
+    function bindSecretVisibilityToggle(toggleBtn, inputEl, showIcon, hideIcon) {
+      if (!toggleBtn || !inputEl) return;
+      toggleBtn.addEventListener('click', function () {
+        const isPassword = inputEl.type === 'password';
+        inputEl.type = isPassword ? 'text' : 'password';
+        if (showIcon && hideIcon) {
+          showIcon.classList.toggle('hidden', isPassword);
+          hideIcon.classList.toggle('hidden', !isPassword);
+        }
+      });
+    }
+
+    bindCollapsibleSection(dom.toggleClaudeModelsBtn, dom.claudeModelsContainer);
+    bindCollapsibleSection(dom.toggleOpenAiModelsBtn, dom.openAiModelsContainer);
 
     if (dom.toggleLegacyModelsBtn) {
       dom.toggleLegacyModelsBtn.addEventListener('click', function () {
@@ -3452,25 +3777,55 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       });
     }
 
-    if (dom.toggleApiKeyVisibilityBtn && dom.groqApiKeyInput) {
-      dom.toggleApiKeyVisibilityBtn.addEventListener('click', function () {
-        const isPassword = dom.groqApiKeyInput.type === 'password';
-        dom.groqApiKeyInput.type = isPassword ? 'text' : 'password';
-        if (dom.eyeIconShow && dom.eyeIconHide) {
-          if (isPassword) {
-            dom.eyeIconShow.classList.add('hidden');
-            dom.eyeIconHide.classList.remove('hidden');
-          } else {
-            dom.eyeIconShow.classList.remove('hidden');
-            dom.eyeIconHide.classList.add('hidden');
-          }
+    bindSecretVisibilityToggle(dom.toggleApiKeyVisibilityBtn, dom.groqApiKeyInput, dom.eyeIconShow, dom.eyeIconHide);
+
+    function persistNvidiaConfigFromInputs(showMessage) {
+      const apiKey = dom.nvidiaApiKeyInput ? dom.nvidiaApiKeyInput.value.trim() : '';
+      const proxyUrl = dom.nvidiaProxyUrlInput ? normalizeProxyUrl(dom.nvidiaProxyUrlInput.value) : '';
+      state.settings.nvidiaApiKey = apiKey;
+      state.settings.nvidiaProxyUrl = proxyUrl;
+      if (dom.nvidiaProxyUrlInput && dom.nvidiaProxyUrlInput.value !== proxyUrl) {
+        dom.nvidiaProxyUrlInput.value = proxyUrl;
+      }
+      saveSettings();
+      updateNvidiaStatusBadge();
+      if (showMessage) {
+        showToast(apiKey ? 'Clave personalizada de NVIDIA guardada' : (proxyUrl ? 'Proxy NVIDIA guardado' : 'Configuración de NVIDIA API actualizada'));
+      }
+    }
+
+    if (dom.saveNvidiaConfigBtn) {
+      dom.saveNvidiaConfigBtn.addEventListener('click', function () {
+        persistNvidiaConfigFromInputs(true);
+      });
+    }
+
+    if (dom.nvidiaProxyUrlInput) {
+      dom.nvidiaProxyUrlInput.addEventListener('change', function () {
+        persistNvidiaConfigFromInputs(false);
+      });
+      dom.nvidiaProxyUrlInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          persistNvidiaConfigFromInputs(true);
         }
       });
     }
 
+    if (dom.nvidiaApiKeyInput) {
+      dom.nvidiaApiKeyInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          persistNvidiaConfigFromInputs(true);
+        }
+      });
+    }
+
+    bindSecretVisibilityToggle(dom.toggleNvidiaKeyVisibilityBtn, dom.nvidiaApiKeyInput, dom.eyeIconNvidiaShow, dom.eyeIconNvidiaHide);
+
     function persistPoeConfigFromInputs(showMessage) {
       const apiKey = dom.poeApiKeyInput ? dom.poeApiKeyInput.value.trim() : '';
-      const proxyUrl = dom.poeProxyUrlInput ? normalizePoeProxyUrl(dom.poeProxyUrlInput.value) : '';
+      const proxyUrl = dom.poeProxyUrlInput ? normalizeProxyUrl(dom.poeProxyUrlInput.value) : '';
       state.settings.poeApiKey = apiKey;
       state.settings.poeProxyUrl = proxyUrl;
       if (dom.poeProxyUrlInput && dom.poeProxyUrlInput.value !== proxyUrl) {
@@ -3510,21 +3865,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       });
     }
 
-    if (dom.togglePoeKeyVisibilityBtn && dom.poeApiKeyInput) {
-      dom.togglePoeKeyVisibilityBtn.addEventListener('click', function () {
-        const isPassword = dom.poeApiKeyInput.type === 'password';
-        dom.poeApiKeyInput.type = isPassword ? 'text' : 'password';
-        if (dom.eyeIconPoeShow && dom.eyeIconPoeHide) {
-          if (isPassword) {
-            dom.eyeIconPoeShow.classList.add('hidden');
-            dom.eyeIconPoeHide.classList.remove('hidden');
-          } else {
-            dom.eyeIconPoeShow.classList.remove('hidden');
-            dom.eyeIconPoeHide.classList.add('hidden');
-          }
-        }
-      });
-    }
+    bindSecretVisibilityToggle(dom.togglePoeKeyVisibilityBtn, dom.poeApiKeyInput, dom.eyeIconPoeShow, dom.eyeIconPoeHide);
 
     if (dom.clearAllChatsBtn) dom.clearAllChatsBtn.addEventListener('click', clearAllHistory);
 
