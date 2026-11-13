@@ -164,6 +164,7 @@ Para recibir respuestas reales e inteligentes a tu consulta con **${'modelo sele
   };
 
   const DEFAULT_POE_PROXY_URL = 'https://megacld-poe.villaruizgerardo0.workers.dev';
+  const DEFAULT_NVIDIA_PROXY_URL = 'https://mute-dream-72d8.villaruizgerardo0.workers.dev';
   const STORAGE_KEY_PENDING_STRIPE = 'megacld_pending_stripe_session';
   let stripePollTimer = null;
 
@@ -2440,22 +2441,40 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     return trimmed;
   }
 
-  function getActivePoeProxyUrl() {
-    const savedUrl = state && state.settings ? state.settings.poeProxyUrl : '';
-    const defaultUrl = typeof DEFAULT_POE_PROXY_URL === 'string' ? DEFAULT_POE_PROXY_URL : '';
-    return normalizeProxyUrl(savedUrl || defaultUrl);
+  function getConfiguredProxyUrl(settingKey, defaultVal) {
+    const savedUrl = state && state.settings ? state.settings[settingKey] : '';
+    const fallbackUrl = typeof defaultVal === 'string' ? defaultVal : '';
+    return normalizeProxyUrl(savedUrl || fallbackUrl);
   }
 
-  function getActiveNvidiaCustomProxyUrl() {
-    const savedUrl = state && state.settings ? state.settings.nvidiaProxyUrl : '';
-    return normalizeProxyUrl(savedUrl);
+  function getActivePoeProxyUrl() {
+    return getConfiguredProxyUrl('poeProxyUrl', DEFAULT_POE_PROXY_URL);
+  }
+
+  function getActiveNvidiaProxyUrl() {
+    return getConfiguredProxyUrl('nvidiaProxyUrl', DEFAULT_NVIDIA_PROXY_URL);
+  }
+
+  function resolveNvidiaEndpoint(baseUrl, suffix) {
+    const normalized = normalizeProxyUrl(baseUrl);
+    if (!normalized) return '';
+    if (normalized.includes('/api/nvidia/') || normalized.includes('/.netlify/functions/')) {
+      return normalized;
+    }
+    if (normalized.endsWith('/nvidia')) {
+      return suffix === 'status' ? normalized + '/status' : normalized;
+    }
+    if (normalized.endsWith('/nvidia/status')) {
+      return suffix === 'status' ? normalized : normalized.replace(/\/status$/, '');
+    }
+    return normalized + (suffix === 'status' ? '/nvidia/status' : '/nvidia');
   }
 
   function updateNvidiaStatusBadge() {
     if (!dom.nvidiaStatusNotice) return;
     const customKey = (state.settings.nvidiaApiKey || '').trim();
-    const customProxyUrl = getActiveNvidiaCustomProxyUrl();
-    const unifiedWorkerUrl = getActivePoeProxyUrl();
+    const customProxyUrl = normalizeProxyUrl(state.settings.nvidiaProxyUrl);
+    const activeProxyUrl = getActiveNvidiaProxyUrl();
     const isGhPages = isGitHubPagesOrigin();
     const isHttpOrigin = typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http');
 
@@ -2465,29 +2484,28 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
       return;
     }
 
-    if (customProxyUrl) {
-      dom.nvidiaStatusNotice.className = 'api-key-status-notice info';
-      dom.nvidiaStatusNotice.textContent = 'Proxy NVIDIA configurado: conectando con ' + customProxyUrl + ' (GPT 6 Astra).';
-    } else if (isGhPages && !unifiedWorkerUrl) {
+    if (isGhPages && !activeProxyUrl) {
       dom.nvidiaStatusNotice.className = 'api-key-status-notice warning';
       dom.nvidiaStatusNotice.textContent = 'En GitHub Pages, configura una URL de Proxy Worker con ruta /nvidia y Secret NVIDIA_API_KEY.';
       return;
-    } else {
-      dom.nvidiaStatusNotice.className = 'api-key-status-notice info';
-      dom.nvidiaStatusNotice.textContent = 'GPT 6 Astra usa NVIDIA API (Mistral Large 4) oculta en servidor/Netlify/Worker (/api/nvidia/chat o /nvidia).';
     }
+
+    dom.nvidiaStatusNotice.className = 'api-key-status-notice info';
+    dom.nvidiaStatusNotice.textContent = activeProxyUrl
+      ? 'Proxy NVIDIA configurado: conectando con ' + activeProxyUrl + ' (GPT 6 Astra).'
+      : 'GPT 6 Astra usa NVIDIA API (Mistral Large 4) oculta en servidor/Netlify/Worker (/api/nvidia/chat o /nvidia).';
 
     const statusCandidates = [];
     if (customProxyUrl) {
-      statusCandidates.push({ url: customProxyUrl.endsWith('/nvidia') ? customProxyUrl + '/status' : customProxyUrl, kind: 'custom' });
-    }
-    if (isHttpOrigin && !isGhPages) {
-      statusCandidates.push({ url: '/api/nvidia/status', kind: 'local' });
-      statusCandidates.push({ url: '/.netlify/functions/nvidia-chat', kind: 'netlify' });
-    }
-    if (unifiedWorkerUrl) {
-      statusCandidates.push({ url: unifiedWorkerUrl + '/nvidia/status', kind: 'worker' });
-      statusCandidates.push({ url: unifiedWorkerUrl, kind: 'worker-root' });
+      statusCandidates.push({ url: resolveNvidiaEndpoint(customProxyUrl, 'status'), kind: 'custom' });
+    } else {
+      if (isHttpOrigin && !isGhPages) {
+        statusCandidates.push({ url: '/api/nvidia/status', kind: 'local' });
+        statusCandidates.push({ url: '/.netlify/functions/nvidia-chat', kind: 'netlify' });
+      }
+      if (activeProxyUrl) {
+        statusCandidates.push({ url: resolveNvidiaEndpoint(activeProxyUrl, 'status'), kind: 'worker' });
+      }
     }
 
     if (statusCandidates.length === 0) return;
@@ -2925,8 +2943,8 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
 
   async function streamNvidiaCompletion(messages, selectedModel, onReasoningChunk, onContentChunk, webResults = [], webMeta = null) {
     const customKey = (state.settings.nvidiaApiKey || '').trim();
-    const customNvidiaProxy = getActiveNvidiaCustomProxyUrl();
-    const unifiedWorkerBase = getActivePoeProxyUrl();
+    const customNvidiaProxy = normalizeProxyUrl(state.settings.nvidiaProxyUrl);
+    const activeNvidiaProxy = getActiveNvidiaProxyUrl();
     const isGhPages = isGitHubPagesOrigin();
     const isHttpOrigin = typeof window !== 'undefined' &&
       window.location &&
@@ -2945,15 +2963,18 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
     }
 
     const proxyCandidates = [];
-    if (customNvidiaProxy) {
-      proxyCandidates.push(customNvidiaProxy);
-    }
-    if (isHttpOrigin && !isGhPages) {
-      proxyCandidates.push('/api/nvidia/chat');
-      proxyCandidates.push('/.netlify/functions/nvidia-chat');
-    }
-    if (unifiedWorkerBase) {
-      proxyCandidates.push(unifiedWorkerBase.endsWith('/nvidia') ? unifiedWorkerBase : unifiedWorkerBase + '/nvidia');
+    const customChatEndpoint = resolveNvidiaEndpoint(customNvidiaProxy, 'chat');
+    if (customChatEndpoint) {
+      proxyCandidates.push(customChatEndpoint);
+    } else {
+      if (isHttpOrigin && !isGhPages) {
+        proxyCandidates.push('/api/nvidia/chat');
+        proxyCandidates.push('/.netlify/functions/nvidia-chat');
+      }
+      const defaultChatEndpoint = resolveNvidiaEndpoint(activeNvidiaProxy, 'chat');
+      if (defaultChatEndpoint) {
+        proxyCandidates.push(defaultChatEndpoint);
+      }
     }
 
     if (proxyCandidates.length === 0) {
@@ -2980,7 +3001,7 @@ Para que pueda responder en tiempo real a tu consulta (*"${escapeHtml(cleanSnipp
           body: JSON.stringify(payloadToSend)
         });
       } catch (networkErr) {
-        if (customNvidiaProxy && endpoint === customNvidiaProxy) {
+        if (customChatEndpoint && endpoint === customChatEndpoint) {
           customProxyNetworkError = 'No se pudo conectar con la URL de Proxy NVIDIA configurada (' + (networkErr && networkErr.message ? networkErr.message : 'error de red') + ').';
         }
         continue;
